@@ -11,9 +11,12 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
 ## 📱 App Showcase
 
 <div align="center">
-  <img src="https://via.placeholder.com/250x500?text=Discover" width="25%" />
-  <img src="https://via.placeholder.com/250x500?text=Filter" width="25%" /> 
-  <img src="https://via.placeholder.com/250x500?text=Details" width="25%" />
+  <img src="https://i.ibb.co/PzGnT01K/Mu-Mu12-20250505-111559.png" width="25%" />
+  <img src="https://i.ibb.co/VYjpH00T/Mu-Mu12-20250505-111621.png" width="25%" /> 
+  <img src="https://i.ibb.co/gZ1MwPDV/Mu-Mu12-20250505-111627.png" width="25%" />
+  <img src="https://i.ibb.co/4ZKTGLh0/Mu-Mu12-20250505-111701.png" width="25%" />
+  <img src="https://i.ibb.co/vxPXqx2W/Mu-Mu12-20250505-111711.png" width="25%" />
+  <img src="https://i.ibb.co/84c1QJDX/Mu-Mu12-20250505-111726.png" width="25%" />
 </div>
 
 ## 🚀 Key Features
