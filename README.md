@@ -39,8 +39,8 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
 
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/yourusername/reeldeal.git
-   cd reeldeal
+   git clone https://github.com/abdalazizesam/RealDeal.git
+   cd RealDeal
    flutter pub get
    ```
 
@@ -55,12 +55,9 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
    flutter run
    ```
 
-## 🔮 Coming Soon
+## 🔮 New Features Coming Soon
 
-- 🔐 User profiles
-- 🌙 Dark/light theme toggle
-- 🎯 More personalized recommendations
-- 🔔 New release notifications
+
 
 ## 💖 Love ReelDeal?
 
