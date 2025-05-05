@@ -43,12 +43,6 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
   </a>
 </div>
 
-Scan this QR code to download directly to your Android device:
-
-<div align="center">
-  <img src="https://via.placeholder.com/150x150?text=QR+Code" alt="QR Code" width="150px" />
-</div>
-
 ## 🏁 Quick Start
 
 1. **Clone & Install**
