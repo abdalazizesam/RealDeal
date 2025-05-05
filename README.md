@@ -2,7 +2,7 @@
 
 > *Your next binge-watch is just a mood away*
 
-![ReelDeal Banner](https://imgur.com/xIh5NCA)
+![ReelDeal Banner](https://i.ibb.co/Ps0ZBC3F/image.png)
 
 ## ✨ What is ReelDeal?
 
