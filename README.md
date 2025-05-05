@@ -35,6 +35,20 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
 - **SharedPreferences** - Local watchlist storage
 - **CachedNetworkImage** - Smooth image loading
 
+## 📲 Download
+
+<div align="center">
+  <a href="https://github.com/abdalazizesam/RealDeal/build/app/outputs/apk/release/app-release.apk">
+    <img src="https://i.ibb.co/zVQDK09g/apk.png" alt="Download APK" />
+  </a>
+</div>
+
+Scan this QR code to download directly to your Android device:
+
+<div align="center">
+  <img src="https://via.placeholder.com/150x150?text=QR+Code" alt="QR Code" width="150px" />
+</div>
+
 ## 🏁 Quick Start
 
 1. **Clone & Install**
