@@ -1,28 +1,36 @@
+import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
 import 'filter_screen.dart';
+import 'details_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final TmdbService tmdbService = TmdbService();
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
+class _HomeScreenState extends State<HomeScreen> {
+  final TmdbService tmdbService = TmdbService();
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reel Deal',style: TextStyle(color: Colors.white),),
+        title: const Text('Reel Deal', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Big buttons for Movie Deal and TV Deal
+              // Deal Buttons
               Row(
                 children: [
                   Expanded(
@@ -56,56 +64,74 @@ class HomeScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 24),
+
+              // Popular Movies
               const Text(
                 'Popular Movies Today',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                height: 200,
-                child: FutureBuilder<List<MediaItem>>(
-                  future: tmdbService.getPopularMovies(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
-                      return Text('Error: ${snapshot.error}');
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Text('No movies found');
-                    }
+              RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {});
+                  return Future.value();
+                },
+                child: SizedBox(
+                  height: 200,
+                  child: FutureBuilder<List<MediaItem>>(
+                    future: tmdbService.getPopularMovies(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Text('No movies found');
+                      }
 
-                    return _buildMediaList(context, snapshot.data!);
-                  },
+                      for (var i = 0; i < min(3, snapshot.data!.length); i++) {
+                        precacheImage(NetworkImage(snapshot.data![i].posterUrl), context);
+                      }
+
+                      return _buildMediaList(context, snapshot.data!);
+                    },
+                  ),
                 ),
               ),
 
               const SizedBox(height: 24),
+
+              // Popular TV Shows
               const Text(
                 'Popular TV Shows Today',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                height: 200,
-                child: FutureBuilder<List<MediaItem>>(
-                  future: tmdbService.getPopularTVShows(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (snapshot.hasError) {
-                      return Text('Error: ${snapshot.error}');
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Text('No TV shows found');
-                    }
+              RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {});
+                  return Future.value();
+                },
+                child: SizedBox(
+                  height: 200,
+                  child: FutureBuilder<List<MediaItem>>(
+                    future: tmdbService.getPopularTVShows(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Text('No TV shows found');
+                      }
 
-                    return _buildMediaList(context, snapshot.data!);
-                  },
+                      for (var i = 0; i < min(3, snapshot.data!.length); i++) {
+                        precacheImage(NetworkImage(snapshot.data![i].posterUrl), context);
+                      }
+
+                      return _buildMediaList(context, snapshot.data!);
+                    },
+                  ),
                 ),
               ),
             ],
@@ -151,10 +177,11 @@ class HomeScreen extends StatelessWidget {
         final item = items[index];
         return GestureDetector(
           onTap: () {
-            Navigator.pushNamed(
+            Navigator.push(
               context,
-              '/details',
-              arguments: item,
+              MaterialPageRoute(
+                builder: (context) => DetailsScreen(item: item),
+              ),
             );
           },
           child: Container(

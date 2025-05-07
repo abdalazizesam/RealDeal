@@ -144,4 +144,32 @@ class TmdbService {
       throw Exception('Failed to load cast');
     }
   }
+
+  // Get trailer URL for a movie or TV show
+  Future<String?> getTrailerUrl(int id, bool isMovie) async {
+    final String mediaType = isMovie ? 'movie' : 'tv';
+    final response = await http.get(
+      Uri.parse('$baseUrl/$mediaType/$id/videos?api_key=$apiKey'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final results = data['results'] as List;
+
+      if (results.isNotEmpty) {
+        final trailer = results.firstWhere(
+              (v) => v['type'] == 'Trailer' && v['site'] == 'YouTube',
+          orElse: () => null,
+        );
+
+        if (trailer != null) {
+          return 'https://youtu.be/${trailer['key']}';
+        } else if (results.isNotEmpty) {
+          return 'https://youtu.be/${results[0]['key']}';
+        }
+      }
+    }
+
+    return null; // No trailer found
+  }
 }

@@ -15,6 +15,10 @@ dependencies:
   cached_network_image: ^3.2.3
   cupertino_icons: ^1.0.5
   flutter_launcher_icons: ^0.14.3
+  lottie: ^2.7.0
+  youtube_player_flutter: 9.1.1
+  flutter_rating_bar: ^4.0.1
+  flutter_inappwebview: ^6.1.0
 
 
 dev_dependencies:
@@ -24,6 +28,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/empty.json
 
 
 flutter_launcher_icons:

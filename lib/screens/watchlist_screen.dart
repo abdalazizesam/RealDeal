@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import '../models/media_item.dart';
 import '../providers/watchlist_provider.dart';
@@ -30,7 +31,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Watchlist', style: TextStyle(color: Colors.white),),
+        title: const Text('My Watchlist', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         bottom: TabBar(
           controller: _tabController,
@@ -60,8 +61,15 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
 
   Widget _buildWatchlistTab(List<MediaItem> items) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text('Your watchlist is empty'),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Lottie.asset('assets/empty.json', width: 200, height: 200),
+            const SizedBox(height: 16),
+            const Text('Your watchlist is empty'),
+          ],
+        ),
       );
     }
 
@@ -70,48 +78,62 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return Card(
-          color: Colors.grey[850],
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(8),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                item.posterUrl,
-                width: 50,
-                height: 75,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+        return Dismissible(
+          key: Key(item.id.toString()),
+          background: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          direction: DismissDirection.endToStart,
+          onDismissed: (_) {
+            Provider.of<WatchlistProvider>(context, listen: false)
+                .removeFromWatchlist(item.id);
+          },
+          child: Card(
+            color: Colors.grey[850],
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(8),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(
+                  item.posterUrl,
                   width: 50,
                   height: 75,
-                  color: Colors.grey[800],
-                  child: const Icon(Icons.error),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 50,
+                    height: 75,
+                    color: Colors.grey[800],
+                    child: const Icon(Icons.error),
+                  ),
                 ),
               ),
-            ),
-            title: Text(item.title,style: TextStyle(color: Colors.blueAccent),),
-            subtitle: Text(
-              '${item.year} • ${item.genres.take(2).join(', ')}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.grey),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                Provider.of<WatchlistProvider>(context, listen: false)
-                    .removeFromWatchlist(item.id);
+              title: Text(item.title, style: TextStyle(color: Colors.blueAccent)),
+              subtitle: Text(
+                '${item.year} • ${item.genres.take(2).join(', ')}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey),
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () {
+                  Provider.of<WatchlistProvider>(context, listen: false)
+                      .removeFromWatchlist(item.id);
+                },
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetailsScreen(item: item),
+                  ),
+                );
               },
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DetailsScreen(item: item),
-                ),
-              );
-            },
           ),
         );
       },
