@@ -52,7 +52,7 @@ class TmdbService {
   // Get popular movies
   Future<List<MediaItem>> getPopularMovies() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/movie/popular?api_key=$apiKey&language=en-US&page=1'),
+      Uri.parse('$baseUrl/trending/movie/day?api_key=$apiKey&language=en-US&page=1'),
     );
 
     if (response.statusCode == 200) {
@@ -68,7 +68,7 @@ class TmdbService {
   // Get popular TV shows
   Future<List<MediaItem>> getPopularTVShows() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/tv/popular?api_key=$apiKey&language=en-US&page=1'),
+      Uri.parse('$baseUrl/trending/tv/day?api_key=$apiKey'),
     );
 
     if (response.statusCode == 200) {
@@ -77,7 +77,7 @@ class TmdbService {
           .map((json) => MediaItem.fromTvJson(json, tvGenres))
           .toList();
     } else {
-      throw Exception('Failed to load popular TV shows');
+      throw Exception('Failed to load trending TV shows');
     }
   }
 
@@ -172,4 +172,103 @@ class TmdbService {
 
     return null; // No trailer found
   }
+
+  // Get similar movies
+  Future<List<MediaItem>> getSimilarMovies(int movieId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/movie/$movieId/similar?api_key=$apiKey&language=en-US&page=1'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List)
+          .map((json) => MediaItem.fromMovieJson(json, movieGenres))
+          .toList();
+    } else {
+      throw Exception('Failed to load similar movies');
+    }
+  }
+
+// Get similar TV shows
+  Future<List<MediaItem>> getSimilarTVShows(int tvId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tv/$tvId/similar?api_key=$apiKey&language=en-US&page=1'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List)
+          .map((json) => MediaItem.fromTvJson(json, tvGenres))
+          .toList();
+    } else {
+      throw Exception('Failed to load similar TV shows');
+    }
+  }
+
+  // Get movie details including runtime
+  Future<Map<String, dynamic>> getMovieDetails(int movieId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/movie/$movieId?api_key=$apiKey&language=en-US'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final int runtime = data['runtime'] ?? 0;
+
+      return {
+        'runtime': runtime,
+        'duration': _formatMovieDuration(runtime),
+      };
+    } else {
+      throw Exception('Failed to load movie details');
+    }
+  }
+
+// Get TV show details including episode runtime
+  Future<Map<String, dynamic>> getTVShowDetails(int tvId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tv/$tvId?api_key=$apiKey&language=en-US'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> episodeRuntime = data['episode_run_time'] ?? [];
+      final int numberOfEpisodes = data['number_of_episodes'] ?? 0;
+
+      int avgRuntime = 0;
+      if (episodeRuntime.isNotEmpty) {
+        avgRuntime = episodeRuntime.reduce((a, b) => a + b) ~/ episodeRuntime.length;
+      }
+
+      return {
+        'episodeRuntime': avgRuntime,
+        'numberOfEpisodes': numberOfEpisodes,
+        'duration': _formatTVDuration(avgRuntime, numberOfEpisodes),
+      };
+    } else {
+      throw Exception('Failed to load TV show details');
+    }
+  }
+
+// Helper method to format movie duration
+  String _formatMovieDuration(int minutes) {
+    if (minutes <= 0) return 'Unknown duration';
+
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+
+    if (hours > 0) {
+      return '${hours}h ${remainingMinutes}m';
+    } else {
+      return '${remainingMinutes}m';
+    }
+  }
+
+// Helper method to format TV duration
+  String _formatTVDuration(int minutes, int episodes) {
+    if (minutes <= 0) return episodes > 0 ? '$episodes episodes' : 'Unknown duration';
+
+    return '${minutes}m per episode | $episodes episodes';
+  }
+
 }

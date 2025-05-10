@@ -14,6 +14,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _sortByRating = false;
 
   @override
   void initState() {
@@ -27,12 +28,38 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
     super.dispose();
   }
 
+  List<MediaItem> _getSortedItems(List<MediaItem> items) {
+    if (_sortByRating) {
+      // Create a copy of the list so we don't modify the original
+      final sortedItems = List<MediaItem>.from(items);
+      // Sort by rating in descending order (highest first)
+      sortedItems.sort((a, b) => b.rating.compareTo(a.rating));
+      return sortedItems;
+    }
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Watchlist', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        actions: [
+          // Sort button
+          IconButton(
+            icon: Icon(
+              _sortByRating ? Icons.sort : Icons.sort_outlined,
+              color: _sortByRating ? Colors.amber : Colors.white,
+            ),
+            tooltip: 'Sort by rating',
+            onPressed: () {
+              setState(() {
+                _sortByRating = !_sortByRating;
+              });
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.red,
@@ -48,10 +75,10 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
             controller: _tabController,
             children: [
               // Movies tab
-              _buildWatchlistTab(watchlistProvider.getMoviesWatchlist()),
+              _buildWatchlistTab(_getSortedItems(watchlistProvider.getMoviesWatchlist())),
 
               // TV Shows tab
-              _buildWatchlistTab(watchlistProvider.getTVShowsWatchlist()),
+              _buildWatchlistTab(_getSortedItems(watchlistProvider.getTVShowsWatchlist())),
             ],
           );
         },
@@ -111,7 +138,39 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
                   ),
                 ),
               ),
-              title: Text(item.title, style: TextStyle(color: Colors.blueAccent)),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      style: TextStyle(color: Colors.blueAccent),
+                    ),
+                  ),
+                  // Rating indicator
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getRatingColor(item.rating),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, color: Colors.white, size: 16),
+                        SizedBox(width: 2),
+                        Text(
+                          item.rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               subtitle: Text(
                 '${item.year} • ${item.genres.take(2).join(', ')}',
                 maxLines: 1,
@@ -138,5 +197,18 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
         );
       },
     );
+  }
+
+  // Helper method to get color based on rating
+  Color _getRatingColor(double rating) {
+    if (rating >= 8.0) {
+      return Colors.green;
+    } else if (rating >= 6.0) {
+      return Colors.amber.shade800;
+    } else if (rating >= 4.0) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
   }
 }

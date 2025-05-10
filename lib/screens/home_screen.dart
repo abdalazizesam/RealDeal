@@ -1,10 +1,13 @@
+import 'dart:async'; // Added for StreamSubscription
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
-import 'filter_screen.dart';
-import 'details_screen.dart';
+import '../screens/filter_screen.dart';
+import '../screens/details_screen.dart';
+import '../screens/offline_screen.dart'; // Added
+import 'package:connectivity_plus/connectivity_plus.dart'; // Added
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -16,8 +19,49 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TmdbService tmdbService = TmdbService();
 
+  bool _isOffline = false;
+  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    _setupConnectivityListener();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final isConnected = await ConnectivityHelper.isConnected();
+    setState(() {
+      _isOffline = !isConnected;
+    });
+  }
+
+  void _setupConnectivityListener() {
+    _connectivitySubscription =
+        ConnectivityHelper.connectivityStream.listen((result) {
+          setState(() {
+            _isOffline = result == ConnectivityResult.none;
+          });
+        });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isOffline) {
+      return OfflineScreen(
+        onRetry: () {
+          _checkConnectivity();
+          setState(() {});
+        },
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reel Deal', style: TextStyle(color: Colors.white)),
@@ -41,7 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const FilterScreen(isMovie: true),
+                          builder: (context) =>
+                          const FilterScreen(isMovie: true),
                         ),
                       ),
                     ),
@@ -55,7 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const FilterScreen(isMovie: false),
+                          builder: (context) =>
+                          const FilterScreen(isMovie: false),
                         ),
                       ),
                     ),
@@ -81,16 +127,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: FutureBuilder<List<MediaItem>>(
                     future: tmdbService.getPopularMovies(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
                       } else if (snapshot.hasError) {
                         return Text('Error: ${snapshot.error}');
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      } else if (!snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
                         return const Text('No movies found');
                       }
 
-                      for (var i = 0; i < min(3, snapshot.data!.length); i++) {
-                        precacheImage(NetworkImage(snapshot.data![i].posterUrl), context);
+                      for (var i = 0;
+                      i < min(3, snapshot.data!.length);
+                      i++) {
+                        precacheImage(
+                            NetworkImage(snapshot.data![i].posterUrl),
+                            context);
                       }
 
                       return _buildMediaList(context, snapshot.data!);
@@ -117,16 +170,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: FutureBuilder<List<MediaItem>>(
                     future: tmdbService.getPopularTVShows(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
                       } else if (snapshot.hasError) {
                         return Text('Error: ${snapshot.error}');
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      } else if (!snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
                         return const Text('No TV shows found');
                       }
 
-                      for (var i = 0; i < min(3, snapshot.data!.length); i++) {
-                        precacheImage(NetworkImage(snapshot.data![i].posterUrl), context);
+                      for (var i = 0;
+                      i < min(3, snapshot.data!.length);
+                      i++) {
+                        precacheImage(
+                            NetworkImage(snapshot.data![i].posterUrl),
+                            context);
                       }
 
                       return _buildMediaList(context, snapshot.data!);

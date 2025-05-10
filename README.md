@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # 🎬 ReelDeal
+=======
+# 🎬 ReelDeal 
+>>>>>>> 17e936664b702f2e30013724dccf6f278aa54aed
 
 > *Your next binge-watch is just a mood away*
 

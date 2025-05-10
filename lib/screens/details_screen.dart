@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../models/media_item.dart';
 import '../providers/watchlist_provider.dart';
 import '../services/tmdb_service.dart';
@@ -19,11 +21,83 @@ class _DetailsScreenState extends State<DetailsScreen> {
   final tmdbService = TmdbService();
   String? trailerUrl;
   bool isLoadingTrailer = true;
+  String? duration;
+  bool isLoadingDetails = true;
 
   @override
   void initState() {
     super.initState();
     _loadTrailer();
+    _loadDurationDetails();
+  }
+
+  Widget _buildShimmerPlaceholder() {
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Container(
+          width: 120,
+          margin: const EdgeInsets.only(right: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Shimmer.fromColors(
+                    baseColor: Colors.grey[800]!,
+                    highlightColor: Colors.grey[700]!,
+                    child: Container(
+                      color: Colors.grey[800],
+                      width: 120,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Shimmer.fromColors(
+                baseColor: Colors.grey[800]!,
+                highlightColor: Colors.grey[700]!,
+                child: Container(
+                  height: 12,
+                  width: 100,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadDurationDetails() async {
+    try {
+      if (widget.item.isMovie) {
+        final details = await tmdbService.getMovieDetails(widget.item.id);
+        if (mounted) {
+          setState(() {
+            duration = details['duration'];
+            isLoadingDetails = false;
+          });
+        }
+      } else {
+        final details = await tmdbService.getTVShowDetails(widget.item.id);
+        if (mounted) {
+          setState(() {
+            duration = details['duration'];
+            isLoadingDetails = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoadingDetails = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadTrailer() async {
@@ -52,24 +126,88 @@ class _DetailsScreenState extends State<DetailsScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // App Bar with backdrop image
+          // Blurred App Bar with backdrop image
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              background: CachedNetworkImage(
-                imageUrl: widget.item.backdropUrl,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.grey[900]),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[900],
-                  child: const Icon(Icons.image_not_supported),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Backdrop image
+                  CachedNetworkImage(
+                    imageUrl: widget.item.backdropUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.grey[900]),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[900],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
+                  ),
+                  // Gradient overlay for better text visibility
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.6),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Custom leading button with stylized back arrow
+            leading: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Add blurred background to app bar when scrolled
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(0),
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.2),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Content
+          // Content - Keep the rest of your code as is
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
@@ -115,14 +253,38 @@ class _DetailsScreenState extends State<DetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
+
+                          // FIXED LAYOUT FOR RATING AND YEAR - MOVED TO SEPARATE ROWS
                           Row(
                             children: [
                               const Icon(Icons.star, color: Colors.amber, size: 18),
                               Text(' ${widget.item.rating}/10'),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 12),
                               Text('(${widget.item.year})'),
                             ],
                           ),
+
+                          const SizedBox(height: 4),
+
+                          // SEPARATE ROW FOR DURATION - FIXES OVERFLOW
+                          if (duration != null)
+                            Row(
+                              children: [
+                                const Icon(Icons.timer, color: Colors.grey, size: 18),
+                                Flexible(
+                                  child: Text(
+                                    ' $duration',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else if (isLoadingDetails)
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
 
                           const SizedBox(height: 12),
                           // Genre tags
@@ -241,7 +403,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                   child: CachedNetworkImage(
                                     imageUrl: castMember['profileUrl'] ?? '',
                                     height: 80,
-                                    width: 80,
+                                    width: 90,
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(
                                       height: 80,
@@ -260,9 +422,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                 Text(
                                   castMember['name'] ?? '',
                                   textAlign: TextAlign.center,
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  castMember['character'] ?? '',
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                                 ),
                               ],
                             ),
@@ -271,6 +440,97 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       ),
                     );
                   },
+                ),
+
+                const SizedBox(height: 24),
+
+                // Similar Content section
+                const Text(
+                  'Similar Content',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 200,
+                  child: FutureBuilder<List<MediaItem>>(
+                    future: widget.item.isMovie
+                        ? tmdbService.getSimilarMovies(widget.item.id)
+                        : tmdbService.getSimilarTVShows(widget.item.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return _buildShimmerPlaceholder();
+                      } else if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                              const SizedBox(height: 8),
+                              Text('Error: ${snapshot.error}'),
+                            ],
+                          ),
+                        );
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text('No similar content available'),
+                        );
+                      }
+
+                      return ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          final item = snapshot.data![index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DetailsScreen(item: item),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 120,
+                              margin: const EdgeInsets.only(right: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: item.posterUrl,
+                                        fit: BoxFit.cover,
+                                        width: 120,
+                                        placeholder: (context, url) => Container(
+                                          color: Colors.grey[800],
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          color: Colors.grey[800],
+                                          child: const Icon(Icons.error),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ]),
             ),
