@@ -6,7 +6,8 @@ import 'package:shimmer/shimmer.dart';
 import '../models/media_item.dart';
 import '../providers/watchlist_provider.dart';
 import '../services/tmdb_service.dart';
-import '../widgets/youtube_player_widget.dart'; // Make sure this exists
+import '../widgets/youtube_player_widget.dart';
+import 'actor_details_screen.dart';
 
 class DetailsScreen extends StatefulWidget {
   final MediaItem item;
@@ -188,21 +189,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 ),
               ),
             ),
-            // Add blurred background to app bar when scrolled
+            // Remove the black line at the bottom of the app bar
             bottom: PreferredSize(
               preferredSize: Size.fromHeight(0),
               child: Container(
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.2),
-                    ],
-                  ),
-                ),
+                height: 0, // Changed from 1 to 0 to remove the line
               ),
             ),
           ),
@@ -393,47 +384,61 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         itemCount: snapshot.data!.length,
                         itemBuilder: (context, index) {
                           final castMember = snapshot.data![index];
-                          return Container(
-                            width: 80,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Column(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(40),
-                                  child: CachedNetworkImage(
-                                    imageUrl: castMember['profileUrl'] ?? '',
-                                    height: 80,
-                                    width: 90,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      height: 80,
-                                      width: 80,
-                                      color: Colors.grey[800],
-                                    ),
-                                    errorWidget: (context, url, error) => Container(
-                                      height: 80,
-                                      width: 80,
-                                      color: Colors.grey[800],
-                                      child: const Icon(Icons.person),
-                                    ),
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ActorDetailsScreen(
+                                    actorName: castMember['name'] ?? '',
+                                    profileUrl: castMember['profileUrl'] ?? '',
+                                    actorId: castMember['id'] ?? 0,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  castMember['name'] ?? '',
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  castMember['character'] ?? '',
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
-                                ),
-                              ],
+                              );
+                            },
+                            child: Container(
+                              width: 80,
+                              margin: const EdgeInsets.only(right: 12),
+                              child: Column(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(40),
+                                    child: CachedNetworkImage(
+                                      imageUrl: castMember['profileUrl'] ?? '',
+                                      height: 80,
+                                      width: 90,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        height: 80,
+                                        width: 80,
+                                        color: Colors.grey[800],
+                                      ),
+                                      errorWidget: (context, url, error) => Container(
+                                        height: 80,
+                                        width: 80,
+                                        color: Colors.grey[800],
+                                        child: const Icon(Icons.person),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    castMember['name'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    castMember['character'] ?? '',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },

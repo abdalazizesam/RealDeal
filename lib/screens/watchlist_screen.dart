@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import '../models/media_item.dart';
 import '../providers/watchlist_provider.dart';
 import 'details_screen.dart';
@@ -14,7 +15,7 @@ class WatchlistScreen extends StatefulWidget {
 
 class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _sortByRating = false;
+  String sortBy = 'date_added'; // Default sorting option (date_added or rating)
 
   @override
   void initState() {
@@ -29,14 +30,160 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
   }
 
   List<MediaItem> _getSortedItems(List<MediaItem> items) {
-    if (_sortByRating) {
-      // Create a copy of the list so we don't modify the original
-      final sortedItems = List<MediaItem>.from(items);
+    // Create a copy of the list so we don't modify the original
+    final sortedItems = List<MediaItem>.from(items);
+
+    if (sortBy == 'rating') {
       // Sort by rating in descending order (highest first)
       sortedItems.sort((a, b) => b.rating.compareTo(a.rating));
-      return sortedItems;
+    } else {
+      // Default: sort by date added (newest first)
+      // This assumes MediaItem has a dateAdded property or we're using the original order
+      // If your WatchlistProvider already maintains this order, you can leave this as-is
     }
-    return items;
+
+    return sortedItems;
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle indicator
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[600],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              // Sort title
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: const [
+                    Icon(Icons.sort_rounded, color: Colors.red, size: 22),
+                    SizedBox(width: 12),
+                    Text(
+                      'Sort Watchlist',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(
+                color: Colors.grey,
+                thickness: 0.5,
+                indent: 20,
+                endIndent: 20,
+              ),
+              // Sort options
+              _buildSortOption(
+                title: 'Date Added',
+                icon: Icons.calendar_today_rounded,
+                value: 'date_added',
+              ),
+              _buildSortOption(
+                title: 'Rating',
+                icon: Icons.star_rounded,
+                value: 'rating',
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortOption({
+    required String title,
+    required IconData icon,
+    required String value,
+  }) {
+    final bool isSelected = sortBy == value;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          setState(() {
+            sortBy = value;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.red.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.red : Colors.grey[400],
+                size: 22,
+              ),
+              const SizedBox(width: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              const Spacer(),
+              if (isSelected)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -46,18 +193,32 @@ class _WatchlistScreenState extends State<WatchlistScreen> with SingleTickerProv
         title: const Text('My Watchlist', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         actions: [
-          // Sort button
-          IconButton(
-            icon: Icon(
-              _sortByRating ? Icons.sort : Icons.sort_outlined,
-              color: _sortByRating ? Colors.amber : Colors.white,
+          // Sort button with blurred background
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.sort_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    tooltip: 'Sort by',
+                    onPressed: _showSortOptions,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+              ),
             ),
-            tooltip: 'Sort by rating',
-            onPressed: () {
-              setState(() {
-                _sortByRating = !_sortByRating;
-              });
-            },
           ),
         ],
         bottom: TabBar(

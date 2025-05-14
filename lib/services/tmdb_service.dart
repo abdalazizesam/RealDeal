@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/media_item.dart';
+import 'dart:math';
+import 'dart:async';
 
 class TmdbService {
   // Replace with your TMDB API key
@@ -133,6 +135,7 @@ class TmdbService {
       // Take only first 10 cast members
       return castList.take(10).map((actor) {
         return {
+          'id': actor['id'] ?? 0,  // Add actor ID
           'name': actor['name'] ?? '',
           'character': actor['character'] ?? '',
           'profileUrl': actor['profile_path'] != null
@@ -271,4 +274,166 @@ class TmdbService {
     return '${minutes}m per episode | $episodes episodes';
   }
 
+  // Get actor details including biography
+  Future<Map<String, dynamic>> getActorDetails(int actorId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/person/$actorId?api_key=$apiKey&language=en-US'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return {
+        'name': data['name'] ?? '',
+        'biography': data['biography'] ?? '',
+        'birthday': data['birthday'] ?? '',
+        'deathday': data['deathday'] ?? '',
+        'placeOfBirth': data['place_of_birth'] ?? '',
+        'profileUrl': data['profile_path'] != null
+            ? 'https://image.tmdb.org/t/p/w500${data['profile_path']}'
+            : 'https://via.placeholder.com/500x750?text=No+Image',
+      };
+    } else {
+      throw Exception('Failed to load actor details');
+    }
+  }
+
+// Get actor filmography with sorting options
+  Future<List<MediaItem>> getActorFilmography(int actorId, String sortBy) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/person/$actorId/combined_credits?api_key=$apiKey&language=en-US'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> cast = data['cast'] as List;
+      final List<dynamic> sortedCast = List.from(cast);
+
+      // Apply sorting
+      switch (sortBy) {
+        case 'vote_average':
+          sortedCast.sort((a, b) =>
+              ((b['vote_average'] ?? 0) as num).compareTo((a['vote_average'] ?? 0) as num));
+          break;
+        case 'release_date':
+          sortedCast.sort((a, b) {
+            final String dateA = a['media_type'] == 'movie'
+                ? (a['release_date'] ?? '')
+                : (a['first_air_date'] ?? '');
+            final String dateB = b['media_type'] == 'movie'
+                ? (b['release_date'] ?? '')
+                : (b['first_air_date'] ?? '');
+            return dateB.compareTo(dateA); // Sort by newest first
+          });
+          break;
+        case 'popularity':
+        default:
+          sortedCast.sort((a, b) =>
+              ((b['popularity'] ?? 0) as num).compareTo((a['popularity'] ?? 0) as num));
+          break;
+      }
+
+      // Filter out items with empty titles
+      final List<dynamic> filteredCast = sortedCast.where((item) {
+        final bool isMovie = item['media_type'] == 'movie';
+        final String title = isMovie ? (item['title'] ?? '') : (item['name'] ?? '');
+        return title.isNotEmpty;
+      }).toList();
+
+      return filteredCast.map((item) {
+        final bool isMovie = item['media_type'] == 'movie';
+        final String title = isMovie ? (item['title'] ?? '') : (item['name'] ?? '');
+        final String releaseDate = isMovie
+            ? (item['release_date'] ?? '')
+            : (item['first_air_date'] ?? '');
+        final String year = releaseDate.isNotEmpty ? releaseDate.substring(0, min(4, releaseDate.length)) : '';
+
+        // Extract genre names from ids
+        final List<int> genreIds = List<int>.from(item['genre_ids'] ?? []);
+        final List<String> genreNames = genreIds.map((id) {
+          return isMovie ? (movieGenres[id] ?? '') : (tvGenres[id] ?? '');
+        }).where((name) => name.isNotEmpty).toList();
+
+        return MediaItem(
+          id: item['id'] ?? 0,
+          title: title,
+          overview: item['overview'] ?? 'No description available',
+          posterUrl: item['poster_path'] != null
+              ? 'https://image.tmdb.org/t/p/w500${item['poster_path']}'
+              : 'https://via.placeholder.com/500x750?text=No+Image',
+          backdropUrl: item['backdrop_path'] != null
+              ? 'https://image.tmdb.org/t/p/w1280${item['backdrop_path']}'
+              : 'https://via.placeholder.com/1280x720?text=No+Image',
+          rating: (item['vote_average'] ?? 0).toDouble(),
+          year: year,
+          genres: genreNames,
+          isMovie: isMovie,
+          character: item['character'] ?? '',
+        );
+      }).toList();
+    } else {
+      throw Exception('Failed to load actor filmography');
+    }
+  }
+
+// NEW METHODS FOR SEARCH FUNCTIONALITY
+
+  // Search for movies
+  Future<List<MediaItem>> searchMovies(String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/search/movie?api_key=$apiKey&language=en-US&query=${Uri.encodeComponent(query)}&page=1&include_adult=false'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List)
+          .map((json) => MediaItem.fromMovieJson(json, movieGenres))
+          .toList();
+    } else {
+      throw Exception('Failed to search movies');
+    }
+  }
+
+  // Search for TV shows
+  Future<List<MediaItem>> searchTVShows(String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/search/tv?api_key=$apiKey&language=en-US&query=${Uri.encodeComponent(query)}&page=1&include_adult=false'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List)
+          .map((json) => MediaItem.fromTvJson(json, tvGenres))
+          .toList();
+    } else {
+      throw Exception('Failed to search TV shows');
+    }
+  }
+
+  // Search for actors
+  Future<List<Map<String, dynamic>>> searchActors(String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/search/person?api_key=$apiKey&language=en-US&query=${Uri.encodeComponent(query)}&page=1&include_adult=false'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List)
+          .where((json) => json['known_for_department'] == 'Acting')
+          .map((json) {
+        return {
+          'id': json['id'] ?? 0,
+          'name': json['name'] ?? '',
+          'popularity': json['popularity'] ?? 0.0,
+          'profileUrl': json['profile_path'] != null
+              ? 'https://image.tmdb.org/t/p/w200${json['profile_path']}'
+              : 'https://via.placeholder.com/200x300?text=No+Image',
+        };
+      })
+          .toList();
+    } else {
+      throw Exception('Failed to search actors');
+    }
+  }
 }
+
+

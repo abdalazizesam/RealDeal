@@ -8,6 +8,8 @@ class MediaItem {
   final String year;
   final List<String> genres;
   final bool isMovie;
+  final String? character;
+
 
   MediaItem({
     required this.id,
@@ -19,6 +21,7 @@ class MediaItem {
     required this.year,
     required this.genres,
     required this.isMovie,
+    this.character,
   });
 
   factory MediaItem.fromMovieJson(Map<String, dynamic> json, Map<int, String> genreMap) {
@@ -51,6 +54,7 @@ class MediaItem {
       year: year,
       genres: genres,
       isMovie: true,
+      character: json['character'],
     );
   }
 
@@ -84,6 +88,7 @@ class MediaItem {
       year: year,
       genres: genres,
       isMovie: false,
+      character: json['character'],
     );
   }
 
@@ -99,6 +104,7 @@ class MediaItem {
       'year': year,
       'genres': genres,
       'isMovie': isMovie,
+      'character': character,
     };
   }
 
@@ -114,6 +120,7 @@ class MediaItem {
       year: json['year'],
       genres: List<String>.from(json['genres']),
       isMovie: json['isMovie'],
+      character: json['character'],
     );
   }
 }

@@ -1,4 +1,4 @@
-import 'dart:async'; // Added for StreamSubscription
+import 'dart:async';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,8 +6,9 @@ import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
 import '../screens/filter_screen.dart';
 import '../screens/details_screen.dart';
-import '../screens/offline_screen.dart'; // Added
-import 'package:connectivity_plus/connectivity_plus.dart'; // Added
+import '../screens/offline_screen.dart';
+import '../screens/search_screen.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -66,6 +67,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Reel Deal', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        actions: [
+          // Add search icon button
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
