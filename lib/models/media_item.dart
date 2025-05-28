@@ -3,7 +3,7 @@ class MediaItem {
   final String title;
   final String overview;
   final String posterUrl;
-  final String backdropUrl;
+  final String backdropUrl; // Will now use w780 or w1280
   final double rating;
   final String year;
   final List<String> genres;
@@ -24,14 +24,14 @@ class MediaItem {
     this.character,
   });
 
-  factory MediaItem.fromMovieJson(Map<String, dynamic> json, Map<int, String> genreMap) {
-    // Extract year from release_date (format: YYYY-MM-DD)
+  // *** MODIFICATION: Added optional character parameter for fromMovieJson & fromTvJson ***
+  // *** MODIFICATION: Changed backdropUrl to use w780 for better quality in details screens ***
+  factory MediaItem.fromMovieJson(Map<String, dynamic> json, Map<int, String> genreMap, {String? character}) {
     String year = '';
     if (json['release_date'] != null && json['release_date'].toString().isNotEmpty) {
       year = json['release_date'].toString().split('-')[0];
     }
 
-    // Get genre names from IDs
     List<String> genres = [];
     if (json['genre_ids'] != null) {
       genres = (json['genre_ids'] as List)
@@ -48,24 +48,22 @@ class MediaItem {
           ? 'https://image.tmdb.org/t/p/w500${json['poster_path']}'
           : 'https://via.placeholder.com/500x750?text=No+Image',
       backdropUrl: json['backdrop_path'] != null
-          ? 'https://image.tmdb.org/t/p/w500${json['backdrop_path']}'
-          : 'https://via.placeholder.com/500x281?text=No+Image',
+          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}' // MODIFIED to w780
+          : 'https://via.placeholder.com/780x439?text=No+Image', // Adjusted placeholder size
       rating: (json['vote_average'] ?? 0.0).toDouble(),
       year: year,
       genres: genres,
       isMovie: true,
-      character: json['character'],
+      character: character ?? json['character'], // Use passed character or from json
     );
   }
 
-  factory MediaItem.fromTvJson(Map<String, dynamic> json, Map<int, String> genreMap) {
-    // Extract year from first_air_date (format: YYYY-MM-DD)
+  factory MediaItem.fromTvJson(Map<String, dynamic> json, Map<int, String> genreMap, {String? character}) {
     String year = '';
     if (json['first_air_date'] != null && json['first_air_date'].toString().isNotEmpty) {
       year = json['first_air_date'].toString().split('-')[0];
     }
 
-    // Get genre names from IDs
     List<String> genres = [];
     if (json['genre_ids'] != null) {
       genres = (json['genre_ids'] as List)
@@ -82,17 +80,16 @@ class MediaItem {
           ? 'https://image.tmdb.org/t/p/w500${json['poster_path']}'
           : 'https://via.placeholder.com/500x750?text=No+Image',
       backdropUrl: json['backdrop_path'] != null
-          ? 'https://image.tmdb.org/t/p/w500${json['backdrop_path']}'
-          : 'https://via.placeholder.com/500x281?text=No+Image',
+          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}' // MODIFIED to w780
+          : 'https://via.placeholder.com/780x439?text=No+Image', // Adjusted placeholder size
       rating: (json['vote_average'] ?? 0.0).toDouble(),
       year: year,
       genres: genres,
       isMovie: false,
-      character: json['character'],
+      character: character ?? json['character'], // Use passed character or from json
     );
   }
 
-  // For converting to JSON for storage in SharedPreferences
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -108,7 +105,6 @@ class MediaItem {
     };
   }
 
-  // For recreating from SharedPreferences JSON
   factory MediaItem.fromJson(Map<String, dynamic> json) {
     return MediaItem(
       id: json['id'],

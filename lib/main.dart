@@ -1,24 +1,30 @@
+// main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/watchlist_screen.dart';
 import 'providers/watchlist_provider.dart';
+// Import new onboarding welcome screen (we'll create this next)
+import 'screens/onboarding/onboarding_welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  // Check if onboarding has been completed
+  bool hasCompletedOnboarding = prefs.getBool('hasCompletedOnboarding') ?? false;
 
   runApp(
     ChangeNotifierProvider(
       create: (context) => WatchlistProvider(prefs),
-      child: const ReelDealApp(),
+      child: ReelDealApp(showOnboarding: !hasCompletedOnboarding), // Pass the flag
     ),
   );
 }
 
 class ReelDealApp extends StatelessWidget {
-  const ReelDealApp({Key? key}) : super(key: key);
+  final bool showOnboarding; // Add this
+  const ReelDealApp({Key? key, this.showOnboarding = false}) : super(key: key); // Modify constructor
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +34,7 @@ class ReelDealApp extends StatelessWidget {
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         scaffoldBackgroundColor: Colors.black87,
-        textTheme: const TextTheme(
+        textTheme: const TextTheme( // Added const
           bodyMedium: TextStyle(color: Colors.white),
           bodyLarge: TextStyle(color: Colors.white),
           titleMedium: TextStyle(color: Colors.white),
@@ -36,7 +42,8 @@ class ReelDealApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      // Conditionally set the home screen
+      home: showOnboarding ? const OnboardingWelcomeScreen() : const MainScreen(),
     );
   }
 }

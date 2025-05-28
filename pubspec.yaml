@@ -1,7 +1,7 @@
 name: reel_deal
 description: An app to help users pick movies and TV shows based on mood and preferences.
 publish_to: 'none'
-version: 1.3.0+1
+version: 1.4.0+1
 
 environment:
   sdk: '>=2.17.0 <3.0.0'
