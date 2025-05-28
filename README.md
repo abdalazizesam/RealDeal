@@ -37,7 +37,7 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
 ## 📲 Download
 
 <div align="center">
-  <a href="https://github.com/abdalazizesam/RealDeal/releases/download/v1.0.0/RealDealv1.0.0.apk">
+  <a href="https://github.com/abdalazizesam/RealDeal/releases/download/v1.4.0/ReelDealv1.4.0.apk">
     <img src="https://i.ibb.co/zVQDK09g/apk.png" alt="Download APK" />
   </a>
 </div>
