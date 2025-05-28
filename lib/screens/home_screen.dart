@@ -1,7 +1,5 @@
-// home_screen.dart
-
 import 'dart:async';
-import 'dart:math' show Random, min; // Import min
+import 'dart:math' show Random, min;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +10,6 @@ import '../screens/details_screen.dart';
 import '../screens/offline_screen.dart';
 import '../screens/search_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-
-// Assuming ConnectivityHelper is in offline_screen.dart or accessible
-import 'offline_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -146,9 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isOffline) {
-      return OfflineScreen( //
+      return OfflineScreen(
         onRetry: () {
-          _checkConnectivity(); //
+          _checkConnectivity();
           setState(() {});
         },
       );
@@ -156,54 +151,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reel Deal', style: TextStyle(color: Colors.white)), //
-        backgroundColor: Colors.black, //
+        title: const Text('Reel Deal', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white), //
+            icon: const Icon(Icons.search, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SearchScreen()), //
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
               );
             },
           ),
         ],
       ),
       body: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(), //
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.all(16.0), //
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row( //
+              Row(
                 children: [
                   Expanded(
                     child: _buildDealButton(
                       context,
-                      'Movie Deal', //
-                      Icons.movie, //
+                      'Movie Deal',
+                      Icons.movie,
                           () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                          const FilterScreen(isMovie: true), //
+                          const FilterScreen(isMovie: true),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16), //
+                  const SizedBox(width: 16),
                   Expanded(
                     child: _buildDealButton(
                       context,
-                      'TV Deal', //
-                      Icons.tv, //
+                      'TV Deal',
+                      Icons.tv,
                           () => Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                          const FilterScreen(isMovie: false), //
+                          const FilterScreen(isMovie: false),
                         ),
                       ),
                     ),
@@ -211,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
 
-              const SizedBox(height: 24), //
+              const SizedBox(height: 24),
 
               _buildRandomPickButton(
                 context,
@@ -220,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     () => _getRandomMediaItem(context, isMovie: true),
                 Colors.blueAccent,
               ),
-              const SizedBox(height: 16), //
+              const SizedBox(height: 16),
               _buildRandomPickButton(
                 context,
                 'Random TV Show Pick!',
@@ -228,15 +223,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     () => _getRandomMediaItem(context, isMovie: false),
                 Colors.greenAccent,
               ),
-              const SizedBox(height: 24), //
+              const SizedBox(height: 24),
 
 
-              const Text( //
-                'Popular Movies Today', //
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), //
+              const Text(
+                'Popular Movies Today',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8), //
-              RefreshIndicator( //
+              const SizedBox(height: 8),
+              RefreshIndicator(
                 onRefresh: () async {
                   if (mounted) {
                     setState(() {});
@@ -244,41 +239,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Future.value();
                 },
                 child: SizedBox(
-                  height: 200, //
+                  height: 200,
                   child: FutureBuilder<List<MediaItem>>(
-                    future: tmdbService.getPopularMovies(), //
+                    future: tmdbService.getPopularMovies(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState ==
-                          ConnectionState.waiting) { //
-                        return const Center( //
+                          ConnectionState.waiting) {
+                        return const Center(
                             child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) { //
-                        return Text('Error: ${snapshot.error}'); //
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
                       } else if (!snapshot.hasData ||
-                          snapshot.data!.isEmpty) { //
-                        return const Text('No movies found'); //
+                          snapshot.data!.isEmpty) {
+                        return const Text('No movies found');
                       }
                       for (var i = 0;
-                      i < min(3, snapshot.data!.length); //
+                      i < min(3, snapshot.data!.length);
                       i++) {
-                        precacheImage( //
-                            NetworkImage(snapshot.data![i].posterUrl), //
+                        precacheImage(
+                            NetworkImage(snapshot.data![i].posterUrl),
                             context);
                       }
-                      return _buildMediaList(context, snapshot.data!); //
+                      return _buildMediaList(context, snapshot.data!);
                     },
                   ),
                 ),
               ),
 
-              const SizedBox(height: 24), //
+              const SizedBox(height: 24),
 
-              const Text( //
-                'Popular TV Shows Today', //
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), //
+              const Text(
+                'Popular TV Shows Today',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8), //
-              RefreshIndicator( //
+              const SizedBox(height: 8),
+              RefreshIndicator(
                 onRefresh: () async {
                   if (mounted) {
                     setState(() {});
@@ -286,28 +281,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   return Future.value();
                 },
                 child: SizedBox(
-                  height: 200, //
+                  height: 200,
                   child: FutureBuilder<List<MediaItem>>(
-                    future: tmdbService.getPopularTVShows(), //
+                    future: tmdbService.getPopularTVShows(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState ==
-                          ConnectionState.waiting) { //
-                        return const Center( //
+                          ConnectionState.waiting) {
+                        return const Center(
                             child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) { //
-                        return Text('Error: ${snapshot.error}'); //
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
                       } else if (!snapshot.hasData ||
-                          snapshot.data!.isEmpty) { //
-                        return const Text('No TV shows found'); //
+                          snapshot.data!.isEmpty) {
+                        return const Text('No TV shows found');
                       }
                       for (var i = 0;
-                      i < min(3, snapshot.data!.length); //
+                      i < min(3, snapshot.data!.length);
                       i++) {
-                        precacheImage( //
-                            NetworkImage(snapshot.data![i].posterUrl), //
+                        precacheImage(
+                            NetworkImage(snapshot.data![i].posterUrl),
                             context);
                       }
-                      return _buildMediaList(context, snapshot.data!); //
+                      return _buildMediaList(context, snapshot.data!);
                     },
                   ),
                 ),
@@ -397,25 +392,25 @@ class _HomeScreenState extends State<HomeScreen> {
       IconData icon,
       VoidCallback onPressed,
       ) {
-    return ElevatedButton( //
-      onPressed: onPressed, //
+    return ElevatedButton(
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 20), //
-        backgroundColor: Colors.red, //
-        shape: RoundedRectangleBorder( //
-          borderRadius: BorderRadius.circular(12), //
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        backgroundColor: Colors.red,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
         foregroundColor: Colors.white,
       ),
-      child: Column( //
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 36), //
-          const SizedBox(height: 8), //
-          Text( //
-            text, //
+          Icon(icon, size: 36),
+          const SizedBox(height: 8),
+          Text(
+            text,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), //
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -429,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
       VoidCallback onPressed,
       Color backgroundColor,
       ) {
-    return SizedBox( //
+    return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         icon: Icon(icon, size: 24),
@@ -449,52 +444,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildMediaList(BuildContext context, List<MediaItem> items) {
-    return ListView.builder( //
-      scrollDirection: Axis.horizontal, //
-      itemCount: items.length, //
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final item = items[index]; //
-        return GestureDetector( //
+        final item = items[index];
+        return GestureDetector(
           onTap: () {
-            Navigator.push( //
+            Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DetailsScreen(item: item), //
+                builder: (context) => DetailsScreen(item: item),
               ),
             );
           },
-          child: Container( //
-            width: 120, //
-            margin: const EdgeInsets.only(right: 12), //
-            child: Column( //
-              crossAxisAlignment: CrossAxisAlignment.start, //
+          child: Container(
+            width: 120,
+            margin: const EdgeInsets.only(right: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded( //
-                  child: ClipRRect( //
-                    borderRadius: BorderRadius.circular(8), //
-                    child: CachedNetworkImage( //
-                      imageUrl: item.posterUrl, //
-                      fit: BoxFit.cover, //
-                      width: 120, //
-                      placeholder: (context, url) => Container( //
-                        color: Colors.grey[800], //
-                        child: const Center( //
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent), //
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: item.posterUrl,
+                      fit: BoxFit.cover,
+                      width: 120,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container( //
-                        color: Colors.grey[800], //
-                        child: const Icon(Icons.error, color: Colors.white54), //
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[800],
+                        child: const Icon(Icons.error, color: Colors.white54),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 4), //
-                Text( //
-                  item.title, //
-                  maxLines: 2, //
-                  overflow: TextOverflow.ellipsis, //
-                  style: const TextStyle(fontSize: 12, color: Colors.white), //
+                const SizedBox(height: 4),
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.white),
                 ),
               ],
             ),

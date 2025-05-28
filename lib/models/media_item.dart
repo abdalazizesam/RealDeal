@@ -24,8 +24,6 @@ class MediaItem {
     this.character,
   });
 
-  // *** MODIFICATION: Added optional character parameter for fromMovieJson & fromTvJson ***
-  // *** MODIFICATION: Changed backdropUrl to use w780 for better quality in details screens ***
   factory MediaItem.fromMovieJson(Map<String, dynamic> json, Map<int, String> genreMap, {String? character}) {
     String year = '';
     if (json['release_date'] != null && json['release_date'].toString().isNotEmpty) {
