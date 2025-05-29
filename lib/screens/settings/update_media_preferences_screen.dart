@@ -3,16 +3,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/media_item.dart';
 import '../../services/tmdb_service.dart';
-import '../../main.dart';
 
-class OnboardingMovieSelectionScreen extends StatefulWidget {
-  const OnboardingMovieSelectionScreen({Key? key}) : super(key: key);
+class UpdateMediaPreferencesScreen extends StatefulWidget {
+  const UpdateMediaPreferencesScreen({Key? key}) : super(key: key);
 
   @override
-  State<OnboardingMovieSelectionScreen> createState() => _OnboardingMovieSelectionScreenState();
+  State<UpdateMediaPreferencesScreen> createState() => _UpdateMediaPreferencesScreenState();
 }
 
-class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectionScreen> {
+class _UpdateMediaPreferencesScreenState extends State<UpdateMediaPreferencesScreen> {
   final TmdbService _tmdbService = TmdbService();
   List<MediaItem> _topMovies = [];
   List<MediaItem> _topTvShows = [];
@@ -20,25 +19,32 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
   final Set<int> _selectedTvShowIds = {};
   bool _isLoading = true;
 
-  final int _minSelectionCount = 3;
-
   @override
   void initState() {
     super.initState();
-    _loadMedia();
+    _loadMediaAndSavedPreferences();
   }
 
-  Future<void> _loadMedia() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadMediaAndSavedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final savedMovieIds = prefs.getStringList('favoriteMovieIds');
+    final savedTvShowIds = prefs.getStringList('favoriteTvShowIds');
+
+    if (savedMovieIds != null) {
+      _selectedMovieIds.addAll(savedMovieIds.map(int.parse));
+    }
+    if (savedTvShowIds != null) {
+      _selectedTvShowIds.addAll(savedTvShowIds.map(int.parse));
+    }
+
     try {
       _topMovies = await _tmdbService.getTopRatedMovies(page: 1);
       _topTvShows = await _tmdbService.getTopRatedTVShows(page: 1);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load recommendations. Please check your connection.')),
+          SnackBar(content: Text('Failed to load media: $e')),
         );
       }
     }
@@ -49,32 +55,25 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
     }
   }
 
-
-  Future<void> _completeOnboarding() async {
-    if (_selectedMovieIds.length + _selectedTvShowIds.length < _minSelectionCount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Please select at least $_minSelectionCount movies or TV shows in total to help us personalize your experience.',
-            style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
-        ),
-      );
-      return;
-    }
-
+  Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favoriteMovieIds', _selectedMovieIds.map((id) => id.toString()).toList());
     await prefs.setStringList('favoriteTvShowIds', _selectedTvShowIds.map((id) => id.toString()).toList());
-    await prefs.setBool('hasCompletedOnboarding', true);
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const MainScreen()),
-          (Route<dynamic> route) => false,
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Media preferences updated!',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer),
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
   Widget _buildMediaGrid(List<MediaItem> items, Set<int> selectedIds, String title) {
@@ -121,6 +120,7 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
               },
               child: Card(
                 elevation: isSelected ? 4 : 1,
+                color: colorScheme.surfaceContainerLow,
                 clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -175,9 +175,7 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Select Some Favorites', style: textTheme.titleLarge),
-        elevation: 0,
-        automaticallyImplyLeading: false,
+        title: const Text('Update Favorites'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -187,8 +185,8 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
             Padding(
               padding: const EdgeInsets.only(bottom: 20.0),
               child: Text(
-                'Tap on a few movies and TV shows you like (at least $_minSelectionCount in total). This will help us personalize your experience!',
-                style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
+                'Update your preferred movies and TV shows. This helps us personalize your recommendations.',
+                style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -196,15 +194,8 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
             _buildMediaGrid(_topTvShows, _selectedTvShowIds, 'Top TV Shows of All Time'),
             const SizedBox(height: 30),
             FilledButton(
-              onPressed: _completeOnboarding,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: textTheme.labelLarge?.copyWith(fontSize: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Finish Setup'),
+              onPressed: _savePreferences,
+              child: const Text('Update Favorites'),
             ),
             const SizedBox(height: 20),
           ],

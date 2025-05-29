@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/tmdb_service.dart';
-import 'onboarding_movie_selection_screen.dart';
 
-class OnboardingGenreSelectionScreen extends StatefulWidget {
-  const OnboardingGenreSelectionScreen({Key? key}) : super(key: key);
+class UpdateGenrePreferencesScreen extends StatefulWidget {
+  const UpdateGenrePreferencesScreen({Key? key}) : super(key: key);
 
   @override
-  State<OnboardingGenreSelectionScreen> createState() => _OnboardingGenreSelectionScreenState();
+  State<UpdateGenrePreferencesScreen> createState() => _UpdateGenrePreferencesScreenState();
 }
 
-class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectionScreen> {
+class _UpdateGenrePreferencesScreenState extends State<UpdateGenrePreferencesScreen> {
   final TmdbService _tmdbService = TmdbService();
   final Set<int> _selectedMovieGenreIds = {};
   final Set<int> _selectedTvGenreIds = {};
@@ -22,12 +21,24 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
   @override
   void initState() {
     super.initState();
-    _loadGenres();
+    _loadGenresAndSavedPreferences();
   }
 
-  Future<void> _loadGenres() async {
+  Future<void> _loadGenresAndSavedPreferences() async {
     _movieGenres = _tmdbService.movieGenres;
     _tvGenres = _tmdbService.tvGenres;
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedMovieGenreIds = prefs.getStringList('favoriteMovieGenreIds');
+    final savedTvGenreIds = prefs.getStringList('favoriteTvGenreIds');
+
+    if (savedMovieGenreIds != null) {
+      _selectedMovieGenreIds.addAll(savedMovieGenreIds.map(int.parse));
+    }
+    if (savedTvGenreIds != null) {
+      _selectedTvGenreIds.addAll(savedTvGenreIds.map(int.parse));
+    }
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -35,15 +46,29 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
     }
   }
 
-  Future<void> _saveAndProceed() async {
+  Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Corrected line for movie genres:
     await prefs.setStringList('favoriteMovieGenreIds', _selectedMovieGenreIds.map((id) => id.toString()).toList());
+
+    // Corrected line for TV genres:
     await prefs.setStringList('favoriteTvGenreIds', _selectedTvGenreIds.map((id) => id.toString()).toList());
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const OnboardingMovieSelectionScreen()),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Genre preferences updated!',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer),
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+        ),
+      );
+      Navigator.pop(context); // Go back to SettingsScreen
+    }
   }
 
   @override
@@ -57,9 +82,8 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Select Your Favorite Genres', style: textTheme.titleLarge), // M3 typography
-        // backgroundColor: Colors.black, // Themed
-        automaticallyImplyLeading: false, // No back button for linear onboarding
+        title: const Text('Update Genres'),
+        // Back button is implicitly available
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -68,64 +92,52 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
           children: [
             Text(
               'Movie Genres',
-              style: textTheme.titleMedium, // M3 typography
+              style: textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8.0, runSpacing: 8.0, // Adjusted runSpacing
+              spacing: 8.0, runSpacing: 4.0,
               children: _movieGenres.entries.map((entry) {
                 final genreId = entry.key; final genreName = entry.value;
                 final isSelected = _selectedMovieGenreIds.contains(genreId);
                 return FilterChip(
-                  label: Text(genreName),
-                  selected: isSelected,
+                  label: Text(genreName), selected: isSelected,
                   onSelected: (bool selected) { setState(() { if (selected) { _selectedMovieGenreIds.add(genreId); } else { _selectedMovieGenreIds.remove(genreId); }}); },
                   labelStyle: TextStyle(color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurface),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), // M3 standard
-                  selectedColor: colorScheme.secondaryContainer, // M3 selection color
-                  checkmarkColor: colorScheme.onSecondaryContainer, // M3 checkmark color
-                  showCheckmark: true, // Explicitly show checkmark
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                  selectedColor: colorScheme.secondaryContainer,
+                  checkmarkColor: colorScheme.onSecondaryContainer,
                 );
               }).toList(),
             ),
             const SizedBox(height: 24),
             Text(
               'TV Show Genres',
-              style: textTheme.titleMedium, // M3 typography
+              style: textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Wrap(
-              spacing: 8.0, runSpacing: 8.0, // Adjusted runSpacing
+              spacing: 8.0, runSpacing: 4.0,
               children: _tvGenres.entries.map((entry) {
                 final genreId = entry.key; final genreName = entry.value;
                 final isSelected = _selectedTvGenreIds.contains(genreId);
                 return FilterChip(
-                  label: Text(genreName),
-                  selected: isSelected,
+                  label: Text(genreName), selected: isSelected,
                   onSelected: (bool selected) { setState(() { if (selected) { _selectedTvGenreIds.add(genreId); } else { _selectedTvGenreIds.remove(genreId); }}); },
                   labelStyle: TextStyle(color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurface),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
                   selectedColor: colorScheme.secondaryContainer,
                   checkmarkColor: colorScheme.onSecondaryContainer,
-                  showCheckmark: true,
                 );
               }).toList(),
             ),
             const SizedBox(height: 30),
             Center(
-              child: FilledButton( // M3 FilledButton
+              child: FilledButton(
                 onPressed: (_selectedMovieGenreIds.isNotEmpty || _selectedTvGenreIds.isNotEmpty)
-                    ? _saveAndProceed
+                    ? _savePreferences
                     : null,
-                style: FilledButton.styleFrom(
-                  // backgroundColor and foregroundColor will be themed
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  textStyle: textTheme.labelLarge?.copyWith(fontSize: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Next'),
+                child: const Text('Update Genres'),
               ),
             ),
           ],

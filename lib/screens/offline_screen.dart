@@ -13,50 +13,55 @@ class OfflineScreen extends StatefulWidget {
 class _OfflineScreenState extends State<OfflineScreen> {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
+      // backgroundColor will be inherited from the global theme
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
                 Icons.wifi_off_rounded,
                 size: 80,
-                color: Colors.red[400],
+                // color: Colors.red[400], // Use themed color
+                color: colorScheme.error, // Or colorScheme.onSurfaceVariant for a less strong color
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'No Internet Connection',
-                style: TextStyle(
-                  fontSize: 24,
+                style: textTheme.headlineSmall?.copyWith( // M3 typography
+                  // color: colorScheme.onBackground, // Will inherit if not specified
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Please check your internet connection and try again.',
-                style: TextStyle(fontSize: 16),
+              const SizedBox(height: 12), // Adjusted spacing
+              Text(
+                'Please check your internet connection and try again to explore movies and TV shows.',
+                style: textTheme.bodyMedium?.copyWith( // M3 typography
+                  // color: colorScheme.onSurfaceVariant, // Will inherit or use a slightly muted color
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
               SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+                width: double.infinity, // Make button take available width
+                child: FilledButton.icon( // Using FilledButton for primary action
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
                   onPressed: widget.onRetry,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  style: FilledButton.styleFrom(
+                    // backgroundColor: Colors.red, // Will use colorScheme.primary by default
+                    // foregroundColor: colorScheme.onPrimary, // Default for FilledButton
+                    padding: const EdgeInsets.symmetric(vertical: 14), // Adjusted padding
+                    textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold), // M3 button text style
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Retry',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      borderRadius: BorderRadius.circular(12.0), // M3 standard radius
                     ),
                   ),
                 ),
@@ -69,7 +74,7 @@ class _OfflineScreenState extends State<OfflineScreen> {
   }
 }
 
-// Connectivity helper for reuse across the app
+// Connectivity helper remains the same
 class ConnectivityHelper {
   static Future<bool> isConnected() async {
     final connectivityResult = await Connectivity().checkConnectivity();

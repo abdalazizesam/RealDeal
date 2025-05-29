@@ -1,7 +1,7 @@
 name: reel_deal
 description: An app to help users pick movies and TV shows based on mood and preferences.
 publish_to: 'none'
-version: 1.4.0+1
+version: 2.0.0+1
 
 environment:
   sdk: '>=2.17.0 <3.0.0'
@@ -15,6 +15,7 @@ dependencies:
   cached_network_image: ^3.2.3
   cupertino_icons: ^1.0.5
   flutter_launcher_icons: ^0.14.3
+  flutter_animate: ^4.5.2
   lottie: ^2.7.0
   youtube_player_flutter: 9.1.1
   flutter_rating_bar: ^4.0.1
@@ -22,6 +23,9 @@ dependencies:
   connectivity_plus: ^4.0.2
   shimmer: ^3.0.0
   youtube_player_iframe: ^4.0.4
+  url_launcher: ^6.3.1
+  package_info_plus: ^8.3.0
+  intl: ^0.20.2
 
 
 

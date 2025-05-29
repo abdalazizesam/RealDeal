@@ -1,15 +1,32 @@
+import 'package:flutter/material.dart';
+
+enum LibraryStatus {
+  none,
+  watching,
+  wantToWatch,
+  completed,
+  onHold,
+  dropped,
+}
+
 class MediaItem {
   final int id;
   final String title;
   final String overview;
   final String posterUrl;
-  final String backdropUrl; // Will now use w780 or w1280
+  final String backdropUrl;
   final double rating;
   final String year;
   final List<String> genres;
   final bool isMovie;
   final String? character;
 
+  // New fields for My Library feature
+  LibraryStatus libraryStatus;
+  int? currentProgress; // For tracking episodes (TV) or movie completion (0 or 1 for movies)
+  double? userRating; // User's rating for completed items (0.0 to 10.0)
+  int? totalEpisodes; // Total episodes for TV shows, or 1 for movies
+  String? note; // User's note for the item
 
   MediaItem({
     required this.id,
@@ -22,6 +39,12 @@ class MediaItem {
     required this.genres,
     required this.isMovie,
     this.character,
+
+    this.libraryStatus = LibraryStatus.none,
+    this.currentProgress,
+    this.userRating,
+    this.totalEpisodes,
+    this.note,
   });
 
   factory MediaItem.fromMovieJson(Map<String, dynamic> json, Map<int, String> genreMap, {String? character}) {
@@ -46,13 +69,14 @@ class MediaItem {
           ? 'https://image.tmdb.org/t/p/w500${json['poster_path']}'
           : 'https://via.placeholder.com/500x750?text=No+Image',
       backdropUrl: json['backdrop_path'] != null
-          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}' // MODIFIED to w780
-          : 'https://via.placeholder.com/780x439?text=No+Image', // Adjusted placeholder size
+          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}'
+          : 'https://via.placeholder.com/780x439?text=No+Image',
       rating: (json['vote_average'] ?? 0.0).toDouble(),
       year: year,
       genres: genres,
       isMovie: true,
-      character: character ?? json['character'], // Use passed character or from json
+      character: character ?? json['character'],
+      totalEpisodes: 1, // Movies have 1 "episode" for progress tracking
     );
   }
 
@@ -78,13 +102,14 @@ class MediaItem {
           ? 'https://image.tmdb.org/t/p/w500${json['poster_path']}'
           : 'https://via.placeholder.com/500x750?text=No+Image',
       backdropUrl: json['backdrop_path'] != null
-          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}' // MODIFIED to w780
-          : 'https://via.placeholder.com/780x439?text=No+Image', // Adjusted placeholder size
+          ? 'https://image.tmdb.org/t/p/w780${json['backdrop_path']}'
+          : 'https://via.placeholder.com/780x439?text=No+Image',
       rating: (json['vote_average'] ?? 0.0).toDouble(),
       year: year,
       genres: genres,
       isMovie: false,
-      character: character ?? json['character'], // Use passed character or from json
+      character: character ?? json['character'],
+      totalEpisodes: json['number_of_episodes'], // New: Assign number_of_episodes
     );
   }
 
@@ -100,6 +125,11 @@ class MediaItem {
       'genres': genres,
       'isMovie': isMovie,
       'character': character,
+      'libraryStatus': libraryStatus.name, // Store as string
+      'currentProgress': currentProgress,
+      'userRating': userRating,
+      'totalEpisodes': totalEpisodes, // Store total episodes
+      'note': note, // Store note
     };
   }
 
@@ -115,6 +145,52 @@ class MediaItem {
       genres: List<String>.from(json['genres']),
       isMovie: json['isMovie'],
       character: json['character'],
+      libraryStatus: LibraryStatus.values.firstWhere(
+              (e) => e.name == json['libraryStatus'], // Use .name to match string
+          orElse: () => LibraryStatus.none),
+      currentProgress: json['currentProgress'],
+      userRating: json['userRating']?.toDouble(), // Ensure it's a double
+      totalEpisodes: json['totalEpisodes'], // New: Read total episodes
+      note: json['note'], // Read note
+    );
+  }
+}
+
+// Extension for easy copying with new values
+extension MediaItemCopyWith on MediaItem {
+  MediaItem copyWith({
+    int? id,
+    String? title,
+    String? overview,
+    String? posterUrl,
+    String? backdropUrl,
+    double? rating,
+    String? year,
+    List<String>? genres,
+    bool? isMovie,
+    String? character,
+    LibraryStatus? libraryStatus,
+    int? currentProgress,
+    double? userRating,
+    int? totalEpisodes,
+    String? note,
+  }) {
+    return MediaItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      overview: overview ?? this.overview,
+      posterUrl: posterUrl ?? this.posterUrl,
+      backdropUrl: backdropUrl ?? this.backdropUrl,
+      rating: rating ?? this.rating,
+      year: year ?? this.year,
+      genres: genres ?? this.genres,
+      isMovie: isMovie ?? this.isMovie,
+      character: character ?? this.character,
+      libraryStatus: libraryStatus ?? this.libraryStatus,
+      currentProgress: currentProgress ?? this.currentProgress,
+      userRating: userRating ?? this.userRating,
+      totalEpisodes: totalEpisodes ?? this.totalEpisodes,
+      note: note ?? this.note,
     );
   }
 }
