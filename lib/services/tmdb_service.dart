@@ -165,6 +165,61 @@ class TmdbService {
     }
   }
 
+
+  // New method: Get upcoming movies
+  Future<List<MediaItem>> getUpcomingMovies({int page = 1}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/movie/upcoming?api_key=$apiKey&language=en-US&page=$page'),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List).map((json) => MediaItem.fromMovieJson(json, movieGenres)).toList();
+    } else {
+      throw Exception('Failed to load upcoming movies');
+    }
+  }
+
+  // New method: Get TV shows currently airing (today)
+  Future<List<MediaItem>> getTopAiringTVShows({int page = 1}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tv/on_the_air?api_key=$apiKey&language=en-US&page=$page'), // 'on_the_air' for currently airing, 'airing_today' for today only
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List).map((json) => MediaItem.fromTvJson(json, tvGenres)).toList();
+    } else {
+      throw Exception('Failed to load top airing TV shows');
+    }
+  }
+
+  // Modify existing getTopRatedMovies to optionally sort by popularity
+  Future<List<MediaItem>> getTopRatedMovies({int page = 1, bool sortByPopularity = false}) async {
+    String sortBy = sortByPopularity ? 'popularity.desc' : 'vote_average.desc';
+    final response = await http.get(
+      Uri.parse('$baseUrl/discover/movie?api_key=$apiKey&language=en-US&sort_by=$sortBy&vote_count.gte=1000&page=$page&include_adult=false'),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List).map((json) => MediaItem.fromMovieJson(json, movieGenres)).toList();
+    } else {
+      throw Exception('Failed to load top-rated movies');
+    }
+  }
+
+  // Modify existing getTopRatedTVShows to optionally sort by popularity
+  Future<List<MediaItem>> getTopRatedTVShows({int page = 1, bool sortByPopularity = false}) async {
+    String sortBy = sortByPopularity ? 'popularity.desc' : 'vote_average.desc';
+    final response = await http.get(
+      Uri.parse('$baseUrl/discover/tv?api_key=$apiKey&language=en-US&sort_by=$sortBy&vote_count.gte=500&page=$page&include_adult=false'),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['results'] as List).map((json) => MediaItem.fromTvJson(json, tvGenres)).toList();
+    } else {
+      throw Exception('Failed to load top-rated TV shows');
+    }
+  }
+
   // Modified: Use cache for TV show details
   Future<Map<String, dynamic>> getTVShowDetails(int tvId) async {
     // Check cache first
@@ -361,26 +416,6 @@ class TmdbService {
       }
       return { 'director': [director], 'writers': writers.toSet().toList(), 'creators': creators.toSet().toList(), };
     } else { throw Exception('Failed to load crew details'); }
-  }
-
-  Future<List<MediaItem>> getTopRatedMovies({int page = 1}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/discover/movie?api_key=$apiKey&language=en-US&sort_by=vote_average.desc&vote_count.gte=1000&page=$page&include_adult=false'),
-    );
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['results'] as List).map((json) => MediaItem.fromMovieJson(json, movieGenres)).toList();
-    } else { throw Exception('Failed to load top-rated movies'); }
-  }
-
-  Future<List<MediaItem>> getTopRatedTVShows({int page = 1}) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/discover/tv?api_key=$apiKey&language=en-US&sort_by=vote_average.desc&vote_count.gte=500&page=$page&include_adult=false'),
-    );
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return (data['results'] as List).map((json) => MediaItem.fromTvJson(json, tvGenres)).toList();
-    } else { throw Exception('Failed to load top-rated TV shows'); }
   }
 
   Future<List<MediaItem>> searchMovies(String query) async {

@@ -1,3 +1,4 @@
+// lib/screens/library_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,7 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String sortBy = 'date_added'; // Default sorting option
+  bool _showMovies = true; // New state to toggle between Movies and TV Shows
 
   final List<LibraryStatus> _libraryStatuses = [
     LibraryStatus.watching,
@@ -53,6 +55,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     } else if (sortBy == 'title') {
       sortedItems.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     }
+    // 'date_added' is the default and no specific sort needed, as items are usually added sequentially
     return sortedItems;
   }
 
@@ -179,7 +182,10 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     final textTheme = Theme.of(context).textTheme;
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
 
-    if (items.isEmpty) {
+    // Filter items based on the selected media type
+    final filteredItems = items.where((item) => item.isMovie == _showMovies).toList();
+
+    if (filteredItems.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -197,9 +203,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      itemCount: items.length,
+      itemCount: filteredItems.length,
       itemBuilder: (context, index) {
-        final item = items[index];
+        final item = filteredItems[index];
         final heroTag = 'library_poster_${item.id}_${item.isMovie}';
 
         // --- Start of Trailing Actions Logic ---
@@ -697,6 +703,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           ),
                           labelStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
                           floatingLabelStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.primary),
+                          hintStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant.withOpacity(0.6)),
                         ),
                         maxLines: 4,
                         minLines: 1,
@@ -784,53 +791,115 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('My Library', style: textTheme.titleLarge?.copyWith(color: colorScheme.onSurface)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.sort_rounded, size: 24),
-                    color: colorScheme.onSurfaceVariant,
-                    tooltip: 'Sort by',
-                    onPressed: _showSortOptions,
-                  ),
+      body: NestedScrollView( // Use NestedScrollView for collapisble app bar
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              title: Text('My Library', style: textTheme.headlineSmall), // Larger title for M3
+              pinned: true, // Remains visible at the top
+              floating: true, // Floats out when scrolling up
+              snap: true, // Snaps to fully visible or fully hidden
+              backgroundColor: colorScheme.surface, // Use surface for app bar background
+              elevation: innerBoxIsScrolled ? 4.0 : 0.0, // Add shadow when scrolled
+              forceElevated: innerBoxIsScrolled, // Ensure elevation is drawn
+
+              // Preferred size for the flexible space before tabs and actions
+              toolbarHeight: kToolbarHeight, // Default toolbar height
+
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight + 56), // Height of SegmentedButton + TabBar
+                child: Column(
+                  children: [
+                    // Segmented button for Movie/TV Show selection
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: SegmentedButton<bool>(
+                        segments: <ButtonSegment<bool>>[
+                          ButtonSegment<bool>(
+                            value: true,
+                            label: Text('Movies', style: textTheme.labelLarge), // M3 label style
+                            icon: const Icon(Icons.movie_filter_rounded),
+                          ),
+                          ButtonSegment<bool>(
+                            value: false,
+                            label: Text('TV Shows', style: textTheme.labelLarge), // M3 label style
+                            icon: const Icon(Icons.tv_rounded),
+                          ),
+                        ],
+                        selected: <bool>{_showMovies},
+                        onSelectionChanged: (Set<bool> newSelection) {
+                          setState(() {
+                            _showMovies = newSelection.first;
+                          });
+                        },
+                        style: SegmentedButton.styleFrom(
+                          foregroundColor: colorScheme.onSurface,
+                          selectedForegroundColor: colorScheme.primary,
+                          selectedBackgroundColor: colorScheme.primaryContainer,
+                          side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    TabBar(
+                      controller: _tabController,
+                      indicatorColor: colorScheme.primary,
+                      labelColor: colorScheme.primary,
+                      unselectedLabelColor: colorScheme.onSurfaceVariant,
+                      isScrollable: true,
+                      labelStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold), // M3 label style
+                      unselectedLabelStyle: textTheme.labelLarge, // M3 label style
+                      indicatorSize: TabBarIndicatorSize.tab, // Indicator covers entire tab
+                      indicatorPadding: EdgeInsets.zero, // No extra padding for indicator
+                      tabs: _libraryStatuses.map((status) {
+                        String label = status.name.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
+                        label = label.substring(0, 1).toUpperCase() + label.substring(1);
+                        return Tab(text: label);
+                      }).toList(),
+                    ),
+                  ],
                 ),
               ),
+              actions: [
+                // Sort button
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Tooltip( // Added tooltip for accessibility
+                    message: 'Sort library items',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.sort_rounded, size: 24),
+                            color: colorScheme.onSurfaceVariant,
+                            onPressed: _showSortOptions,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: colorScheme.primary,
-          labelColor: colorScheme.primary,
-          unselectedLabelColor: colorScheme.onSurfaceVariant,
-          isScrollable: true,
-          tabs: _libraryStatuses.map((status) {
-            String label = status.name.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
-            label = label.substring(0, 1).toUpperCase() + label.substring(1);
-            return Tab(text: label);
-          }).toList(),
-        ),
-      ),
-      body: Consumer<LibraryProvider>(
-        builder: (context, libraryProvider, child) {
-          return TabBarView(
-            controller: _tabController,
-            children: _libraryStatuses.map((status) {
-              return _buildLibraryTab(_getSortedItems(libraryProvider.getItemsByStatus(status)));
-            }).toList(),
-          );
+          ];
         },
+        body: Consumer<LibraryProvider>(
+          builder: (context, libraryProvider, child) {
+            return TabBarView(
+              controller: _tabController,
+              children: _libraryStatuses.map((status) {
+                return _buildLibraryTab(_getSortedItems(libraryProvider.getItemsByStatus(status)));
+              }).toList(),
+            );
+          },
+        ),
       ),
     );
   }

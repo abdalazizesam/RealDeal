@@ -1,3 +1,4 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,7 +8,7 @@ import 'screens/search_screen.dart';
 import 'screens/onboarding/onboarding_welcome_screen.dart';
 import 'providers/library_provider.dart';
 import 'providers/theme_provider.dart';
-import 'models/app_theme_preset.dart';
+import 'models/app_theme_preset.dart'; // Make sure this is imported for AppThemeMode and AppColorPalette
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +18,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => LibraryProvider(prefs)), // Changed to LibraryProvider
+        ChangeNotifierProvider(create: (context) => LibraryProvider(prefs)),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
       ],
       child: ReelDealAppLoader(showOnboarding: !hasCompletedOnboarding),
@@ -31,11 +32,14 @@ class ReelDealAppLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // We now use both consumer and listen to theme changes for MaterialApp
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return ReelDealApp(
           showOnboarding: showOnboarding,
-          currentThemePreset: themeProvider.currentTheme, // Pass the whole preset
+          selectedColorPalette: themeProvider.selectedColorPalette,
+          selectedThemeMode: themeProvider.selectedThemeMode,
+          isOledBlack: themeProvider.isOledBlack,
         );
       },
     );
@@ -44,33 +48,63 @@ class ReelDealAppLoader extends StatelessWidget {
 
 class ReelDealApp extends StatelessWidget {
   final bool showOnboarding;
-  final AppThemePreset currentThemePreset;
+  final AppColorPalette selectedColorPalette;
+  final AppThemeMode selectedThemeMode;
+  final bool isOledBlack;
 
   const ReelDealApp({
     Key? key,
     this.showOnboarding = false,
-    required this.currentThemePreset,
+    required this.selectedColorPalette,
+    required this.selectedThemeMode,
+    required this.isOledBlack,
   }) : super(key: key);
+
+  // Helper to determine the effective brightness
+  Brightness _getEffectiveBrightness(BuildContext context) {
+    if (selectedThemeMode == AppThemeMode.system) {
+      return MediaQuery.of(context).platformBrightness;
+    }
+    return selectedThemeMode == AppThemeMode.dark ? Brightness.dark : Brightness.light;
+  }
+
+  // Helper to determine explicit background/surface colors for OLED black
+  Color? _getExplicitBackgroundColor(BuildContext context) {
+    final Brightness brightness = _getEffectiveBrightness(context);
+    return isOledBlack && brightness == Brightness.dark ? Colors.black : null;
+  }
+
+  Color? _getExplicitSurfaceColor(BuildContext context) {
+    final Brightness brightness = _getEffectiveBrightness(context);
+    return isOledBlack && brightness == Brightness.dark ? const Color(0xFF121212) : null;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final Brightness effectiveBrightness = _getEffectiveBrightness(context);
+    final Color? explicitBackgroundColor = _getExplicitBackgroundColor(context);
+    final Color? explicitSurfaceColor = _getExplicitSurfaceColor(context);
+
     final ColorScheme appColorScheme = ColorScheme.fromSeed(
-      seedColor: currentThemePreset.seedColor,
-      brightness: currentThemePreset.brightness,
-      background: currentThemePreset.explicitBackgroundColor,
-      surface: currentThemePreset.explicitSurfaceColor,
+      seedColor: selectedColorPalette.seedColor,
+      brightness: effectiveBrightness,
+      background: explicitBackgroundColor,
+      surface: explicitSurfaceColor,
     );
 
-    final Color scaffoldBgColor = currentThemePreset.explicitBackgroundColor ?? appColorScheme.background;
-    final Color cardBgColor = currentThemePreset.explicitSurfaceColor ?? appColorScheme.surfaceContainerLow;
-    final Color dialogBgColor = currentThemePreset.explicitSurfaceColor ?? appColorScheme.surfaceContainerHigh;
-    final Color bottomNavBgColor = currentThemePreset.explicitSurfaceColor ?? appColorScheme.surfaceContainer;
-    final Color appBarBgColor = currentThemePreset.explicitSurfaceColor ?? appColorScheme.surface;
+    final Color scaffoldBgColor = explicitBackgroundColor ?? appColorScheme.background;
+    final Color appBarBgColor = explicitSurfaceColor ?? appColorScheme.surface; // AppBar uses surface by default
+    final Color cardBgColor = appColorScheme.surfaceContainerLow;
+    final Color dialogBgColor = appColorScheme.surfaceContainerHigh;
+    final Color bottomNavBgColor = appColorScheme.surfaceContainer;
+
 
     TextTheme baseTextTheme = Theme.of(context).textTheme;
 
     return MaterialApp(
       title: 'ReelDeal',
+      // Pass the effective brightness for theming.
+      themeMode: selectedThemeMode == AppThemeMode.system ? ThemeMode.system : (selectedThemeMode == AppThemeMode.dark ? ThemeMode.dark : ThemeMode.light),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: appColorScheme,
@@ -113,9 +147,11 @@ class ReelDealApp extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
         ),
         cardTheme: CardTheme(
-          elevation: currentThemePreset.brightness == Brightness.dark ? 1.0 : 1.5,
+          elevation: effectiveBrightness == Brightness.dark ? 1.0 : 2.0, // Increased to 2.0 for light theme
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
           color: cardBgColor,
+          shadowColor: appColorScheme.shadow.withOpacity(0.3),
+          surfaceTintColor: Colors.transparent,
         ),
         chipTheme: ChipThemeData(
           backgroundColor: appColorScheme.surfaceContainerHighest,
@@ -174,7 +210,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const SearchScreen(),
-    const LibraryScreen(), // Changed from WatchlistScreen
+    const LibraryScreen(),
   ];
 
   @override
@@ -203,9 +239,9 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_rounded), // Changed icon to a book
+            icon: Icon(Icons.menu_book_rounded),
             activeIcon: Icon(Icons.menu_book),
-            label: 'My Library', // Changed label
+            label: 'My Library',
           ),
         ],
       ),

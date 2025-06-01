@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 
-class AppThemePreset {
+class AppColorPalette {
   final String id; // Unique identifier for saving
-  final String name; // Display name, e.g., "Crimson Light"
+  final String name; // Display name, e.g., "Crimson"
   final Color seedColor;
-  final Color swatchColor1; // For the UI picker
-  final Color swatchColor2; // Second color for the UI picker
-  final Brightness brightness;
-  final Color? explicitBackgroundColor; // For true black or custom dark backgrounds
-  final Color? explicitSurfaceColor; // For cards/dialogs in true black themes
+  final Color swatchColor1Light; // First color for the UI picker in light mode
+  final Color swatchColor2Light; // Second color for the UI picker in light mode
+  final Color swatchColor1Dark;  // First color for the UI picker in dark mode
+  final Color swatchColor2Dark;  // Second color for the UI picker in dark mode
 
-  AppThemePreset({
+
+  AppColorPalette({
     required this.id,
     required this.name,
     required this.seedColor,
-    required this.swatchColor1,
-    required this.swatchColor2,
-    required this.brightness,
-    this.explicitBackgroundColor,
-    this.explicitSurfaceColor,
+    required this.swatchColor1Light,
+    required this.swatchColor2Light,
+    required this.swatchColor1Dark,
+    required this.swatchColor2Dark,
   });
+}
+
+enum AppThemeMode {
+  light,
+  dark,
+  system,
 }

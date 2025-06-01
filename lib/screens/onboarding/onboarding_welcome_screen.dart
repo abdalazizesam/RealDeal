@@ -10,22 +10,23 @@ class OnboardingWelcomeScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background, // Use themed background
+      backgroundColor: colorScheme.background,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon( // Optional: Add an icon or logo for welcome
+              // Use a larger, more prominent icon
+              Icon(
                 Icons.movie_filter_rounded,
-                size: 80,
+                size: 96, // Slightly larger icon
                 color: colorScheme.primary,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32), // Increased spacing
               Text(
                 'Welcome to ReelDeal!',
-                style: textTheme.headlineMedium?.copyWith( // M3 typography
+                style: textTheme.headlineMedium?.copyWith(
                   color: colorScheme.onBackground,
                   fontWeight: FontWeight.bold,
                 ),
@@ -34,13 +35,13 @@ class OnboardingWelcomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Let\'s personalize your experience. Tell us a bit about your movie and TV show preferences.',
-                style: textTheme.bodyLarge?.copyWith( // M3 typography
+                style: textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              FilledButton( // M3 FilledButton
+              const SizedBox(height: 48), // Increased spacing before button
+              FilledButton(
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
@@ -48,12 +49,12 @@ class OnboardingWelcomeScreen extends StatelessWidget {
                   );
                 },
                 style: FilledButton.styleFrom(
-                  // backgroundColor and foregroundColor will be themed
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  textStyle: textTheme.labelLarge?.copyWith(fontSize: 18), // M3 button text style
+                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16), // Slightly more padding
+                  textStyle: textTheme.labelLarge?.copyWith(fontSize: 18),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // M3 standard radius
+                    borderRadius: BorderRadius.circular(16), // Slightly more rounded corners
                   ),
+                  elevation: 2, // Add a subtle elevation for a Material 3 feel
                 ),
                 child: const Text('Get Started'),
               ),
