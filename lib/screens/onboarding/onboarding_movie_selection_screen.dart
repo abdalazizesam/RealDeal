@@ -1,3 +1,4 @@
+// lib/screens/onboarding/onboarding_movie_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +7,7 @@ import '../../services/tmdb_service.dart';
 import '../../main.dart'; // Assuming your main app is now 'MyApp' for Navigator.pushAndRemoveUntil
 import 'package:provider/provider.dart';
 import '../../providers/library_provider.dart';
+import 'package:flutter/services.dart'; // Import for HapticFeedback
 
 class OnboardingMovieSelectionScreen extends StatefulWidget {
   const OnboardingMovieSelectionScreen({Key? key}) : super(key: key);
@@ -23,6 +25,11 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
   bool _isLoading = true;
 
   final int _minSelectionCount = 3;
+
+  // GlobalKeys for hints
+  final GlobalKey _movieGridHintKey = GlobalKey();
+  final GlobalKey _tvGridHintKey = GlobalKey();
+  final GlobalKey _finishButtonHintKey = GlobalKey();
 
   @override
   void initState() {
@@ -55,10 +62,22 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
       setState(() {
         _isLoading = false;
       });
+      // You would typically start the showcase here after the UI is built
+      // WidgetsBinding.instance.addPostFrameCallback((_) => _startShowcase());
     }
   }
 
+  // Conceptual method to start showcase (requires a showcase package)
+  // void _startShowcase() {
+  //   ShowCaseWidget.of(context).startShowCase([
+  //     _movieGridHintKey,
+  //     _tvGridHintKey,
+  //     _finishButtonHintKey,
+  //   ]);
+  // }
+
   Future<void> _completeOnboarding() async {
+    HapticFeedback.lightImpact(); // Haptic Feedback
     if (_selectedMovieIds.length + _selectedTvShowIds.length < _minSelectionCount) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -106,19 +125,48 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
       }
     }
 
+    // Navigate to MainScreen and show the SnackBar
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const MainScreen()),
           (Route<dynamic> route) => false,
     );
+
+    // Show the success message after navigation completes
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Your selected movies and TV shows have been added to your library as "Completed" and rated 10/10. You can change their status and rating anytime in "My Library".',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer),
+          ),
+          duration: const Duration(seconds: 7), // Give user enough time to read
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            onPressed: () {
+              // Optionally do something when "OK" is pressed
+            },
+          ),
+        ),
+      );
+    }
   }
 
-  Widget _buildMediaGrid(List<MediaItem> items, Set<int> selectedIds, String title) {
+  Widget _buildMediaGrid(List<MediaItem> items, Set<int> selectedIds, String title, GlobalKey hintKey) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Wrap with a conceptual Showcase widget for hinting
+        // Showcase(
+        //   key: hintKey,
+        //   description: 'Tap on the posters to select your favorite $title.',
+        //   child:
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0), // More vertical padding
           child: Text(
@@ -126,6 +174,7 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
             style: textTheme.titleMedium,
           ),
         ),
+        // ),
         items.isEmpty && !_isLoading
             ? Padding(
           padding: const EdgeInsets.symmetric(vertical: 20.0),
@@ -136,9 +185,9 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            childAspectRatio: 2 / 3, // Standard aspect ratio for posters
-            crossAxisSpacing: 12, // Increased spacing
-            mainAxisSpacing: 12, // Increased spacing
+            childAspectRatio: 0.55, // Adjusted to make room for text below poster
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: items.length > 15 ? 15 : items.length, // Display a few more options up to 15
           itemBuilder: (context, index) {
@@ -146,6 +195,7 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
             final isSelected = selectedIds.contains(item.id);
             return GestureDetector(
               onTap: () {
+                HapticFeedback.lightImpact(); // Haptic Feedback
                 setState(() {
                   if (isSelected) {
                     selectedIds.remove(item.id);
@@ -154,52 +204,72 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
                   }
                 });
               },
-              child: AnimatedContainer( // Use AnimatedContainer for smooth transition
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12), // Slightly more rounded corners
-                  border: Border.all(
-                    color: isSelected ? colorScheme.primary : Colors.transparent,
-                    width: isSelected ? 3 : 0, // Border width changes on selection
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                    BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.4),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                      : [],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10), // Clip image with slightly less radius than container
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: item.posterUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: colorScheme.surfaceVariant,
-                          child: Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+              child: Column( // Outer Column for poster + text
+                crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch children to fill width
+                children: [
+                  Expanded( // Poster image takes up expanded space
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? colorScheme.primary : Colors.transparent,
+                          width: isSelected ? 3 : 0,
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          color: colorScheme.surfaceVariant,
-                          child: Center(child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant, size: 40)),
+                        boxShadow: isSelected
+                            ? [
+                          BoxShadow(
+                            color: colorScheme.primary.withOpacity(0.4),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ]
+                            : [],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Stack(
+                          fit: StackFit.expand, // Poster fills this space
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: item.posterUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity, // Fill available width
+                              height: double.infinity, // Fill available height
+                              placeholder: (context, url) => Container(
+                                color: colorScheme.surfaceVariant,
+                                child: Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: colorScheme.surfaceVariant,
+                                child: Center(child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant, size: 40)),
+                              ),
+                            ),
+                            // Overlay for selected state
+                            if (isSelected)
+                              Container(
+                                color: colorScheme.primary.withOpacity(0.3), // Semi-transparent overlay
+                                alignment: Alignment.center,
+                                child: Icon(Icons.check_circle, color: colorScheme.onPrimary, size: 56), // Larger checkmark
+                              ),
+                          ],
                         ),
                       ),
-                      // Overlay for selected state
-                      if (isSelected)
-                        Container(
-                          color: colorScheme.primary.withOpacity(0.3), // Semi-transparent overlay
-                          alignment: Alignment.center,
-                          child: Icon(Icons.check_circle, color: colorScheme.onPrimary, size: 56), // Larger checkmark
-                        ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 6), // Spacing between poster and text
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0), // Little padding for text
+                    child: Text(
+                      item.title,
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface),
+                      textAlign: TextAlign.center,
+                      maxLines: 2, // Allow up to 2 lines
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -241,9 +311,14 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
                 textAlign: TextAlign.center,
               ),
             ),
-            _buildMediaGrid(_topMovies, _selectedMovieIds, 'Top Movies of All Time'),
-            _buildMediaGrid(_topTvShows, _selectedTvShowIds, 'Top TV Shows of All Time'),
+            _buildMediaGrid(_topMovies, _selectedMovieIds, 'Top Movies of All Time', _movieGridHintKey),
+            _buildMediaGrid(_topTvShows, _selectedTvShowIds, 'Top TV Shows of All Time', _tvGridHintKey),
             const SizedBox(height: 40), // Increased spacing before button
+            // Wrap with a conceptual Showcase widget for hinting
+            // Showcase(
+            //   key: _finishButtonHintKey,
+            //   description: 'After selecting at least $_minSelectionCount, tap here to finish!',
+            //   child:
             FilledButton(
               onPressed: canProceed ? _completeOnboarding : null, // Enabled/disabled based on selection count
               style: FilledButton.styleFrom(
@@ -256,6 +331,7 @@ class _OnboardingMovieSelectionScreenState extends State<OnboardingMovieSelectio
               ),
               child: const Text('Finish Setup'),
             ),
+            // ),
             const SizedBox(height: 20),
           ],
         ),

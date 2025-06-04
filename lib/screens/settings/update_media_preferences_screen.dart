@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/media_item.dart';
 import '../../services/tmdb_service.dart';
+import 'package:provider/provider.dart';
+import '../../providers/library_provider.dart';
 
 class UpdateMediaPreferencesScreen extends StatefulWidget {
   const UpdateMediaPreferencesScreen({Key? key}) : super(key: key);
@@ -60,11 +62,57 @@ class _UpdateMediaPreferencesScreenState extends State<UpdateMediaPreferencesScr
     await prefs.setStringList('favoriteMovieIds', _selectedMovieIds.map((id) => id.toString()).toList());
     await prefs.setStringList('favoriteTvShowIds', _selectedTvShowIds.map((id) => id.toString()).toList());
 
+    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+
+    // Process selected movies
+    for (int movieId in _selectedMovieIds) {
+      MediaItem? movieToUpdate;
+      try {
+        movieToUpdate = _topMovies.firstWhere((item) => item.id == movieId);
+      } catch (e) {
+        print('Movie with ID $movieId not found in _topMovies: $e');
+        continue; // Skip if not found
+      }
+
+      MediaItem? existingMovie = libraryProvider.getItemFromLibrary(movieId);
+      double? ratingToApply = 10.0; // Default to 10.0
+      // If the movie already exists in the library AND has a userRating, preserve it.
+      if (existingMovie != null && existingMovie.userRating != null) {
+        ratingToApply = existingMovie.userRating;
+      }
+
+      if (movieToUpdate != null) {
+        libraryProvider.updateItemStatus(movieToUpdate, LibraryStatus.completed, userRating: ratingToApply, progress: 1);
+      }
+    }
+
+    // Process selected TV shows
+    for (int tvShowId in _selectedTvShowIds) {
+      MediaItem? tvShowToUpdate;
+      try {
+        tvShowToUpdate = _topTvShows.firstWhere((item) => item.id == tvShowId);
+      } catch (e) {
+        print('TV Show with ID $tvShowId not found in _topTvShows: $e');
+        continue; // Skip if not found
+      }
+
+      MediaItem? existingTvShow = libraryProvider.getItemFromLibrary(tvShowId);
+      double? ratingToApply = 10.0; // Default to 10.0
+      // If the TV show already exists in the library AND has a userRating, preserve it.
+      if (existingTvShow != null && existingTvShow.userRating != null) {
+        ratingToApply = existingTvShow.userRating;
+      }
+
+      if (tvShowToUpdate != null) {
+        libraryProvider.updateItemStatus(tvShowToUpdate, LibraryStatus.completed, userRating: ratingToApply);
+      }
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Media preferences updated!',
+            'Your new selected favorites have been added to your library as completed and rated 10/10.',
             style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer),
           ),
           behavior: SnackBarBehavior.floating,
@@ -100,7 +148,7 @@ class _UpdateMediaPreferencesScreenState extends State<UpdateMediaPreferencesScr
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            childAspectRatio: 2 / 3,
+            childAspectRatio: 0.55, // Adjusted to make room for text below poster
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
           ),
@@ -118,43 +166,61 @@ class _UpdateMediaPreferencesScreenState extends State<UpdateMediaPreferencesScr
                   }
                 });
               },
-              child: Card(
-                elevation: isSelected ? 4 : 1,
-                color: colorScheme.surfaceContainerLow,
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: isSelected
-                      ? BorderSide(color: colorScheme.primary, width: 3)
-                      : BorderSide.none,
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CachedNetworkImage(
-                      imageUrl: item.posterUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: colorScheme.surfaceVariant,
-                        child: Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+              child: Column( // Outer Column for poster + text
+                crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch children to fill width
+                children: [
+                  Expanded( // Poster image takes up expanded space
+                    child: Card(
+                      elevation: isSelected ? 4 : 1,
+                      color: colorScheme.surfaceContainerLow,
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: isSelected
+                            ? BorderSide(color: colorScheme.primary, width: 3)
+                            : BorderSide.none,
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: colorScheme.surfaceVariant,
-                        child: Center(child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant, size: 40)),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: item.posterUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: colorScheme.surfaceVariant,
+                              child: Center(child: CircularProgressIndicator(color: colorScheme.primary)),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: colorScheme.surfaceVariant,
+                              child: Center(child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant, size: 40)),
+                            ),
+                          ),
+                          if (isSelected)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: colorScheme.onSurface.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Icon(Icons.check_circle, color: colorScheme.primary, size: 50),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (isSelected)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.onSurface.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.check_circle, color: colorScheme.primary, size: 50),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 6), // Spacing between poster and text
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0), // Little padding for text
+                    child: Text(
+                      item.title,
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             );
           },

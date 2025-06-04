@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'dart:async';
 import 'dart:math' show Random, min;
 import 'package:flutter/material.dart';
@@ -13,6 +14,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'settings_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/library_provider.dart';
+import 'package:flutter/services.dart';
+import '../widgets/error_display_widget.dart'; // Import the new widget
 
 // New: Enum for media types to simplify category handling
 enum MediaType { movie, tv }
@@ -31,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   late TabController _tabController;
 
-  // Modified: Separate map entries for movie and TV show liked recommendations
   MapEntry<String, List<MediaItem>>? _likedMovieRecommendation;
   MapEntry<String, List<MediaItem>>? _likedTvShowRecommendation;
   bool _isLoadingLikedRecommendations = true;
@@ -42,9 +44,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _tabController = TabController(length: 2, vsync: this);
     _checkConnectivity();
     _setupConnectivityListener();
-    // Use addPostFrameCallback to ensure context is available and avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadLikedRecommendations(); // Load recommendations based on liked items
+      _loadLikedRecommendations();
     });
   }
 
@@ -71,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _isOffline = result == ConnectivityResult.none;
         });
         if (!_isOffline) {
-          _loadLikedRecommendations(); // Reload when connectivity is restored
+          _loadLikedRecommendations();
         }
       }
     });
@@ -81,20 +82,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_isOffline) return;
     setState(() {
       _isLoadingLikedRecommendations = true;
-      _likedMovieRecommendation = null; // Clear previous movie recommendation
-      _likedTvShowRecommendation = null; // Clear previous TV show recommendation
+      _likedMovieRecommendation = null;
+      _likedTvShowRecommendation = null;
     });
 
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
     final List<MediaItem> completedItems = libraryProvider.getItemsByStatus(LibraryStatus.completed);
 
-    // Filter for highly-rated items (>= 8.0)
     final List<MediaItem> highlyRatedMovies = completedItems.where((item) => item.isMovie && (item.userRating ?? 0.0) >= 8.0).toList();
     final List<MediaItem> highlyRatedTvShows = completedItems.where((item) => !item.isMovie && (item.userRating ?? 0.0) >= 8.0).toList();
 
     final random = Random();
 
-    // Load a random liked movie recommendation
     if (highlyRatedMovies.isNotEmpty) {
       final MediaItem selectedLikedMovie = highlyRatedMovies[random.nextInt(highlyRatedMovies.length)];
       try {
@@ -105,10 +104,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       } catch (e) {
         print('Error fetching similar movies for ${selectedLikedMovie.title}: $e');
+        // Handle specific error for this section if needed
       }
     }
 
-    // Load a random liked TV show recommendation
     if (highlyRatedTvShows.isNotEmpty) {
       final MediaItem selectedLikedTvShow = highlyRatedTvShows[random.nextInt(highlyRatedTvShows.length)];
       try {
@@ -119,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       } catch (e) {
         print('Error fetching similar TV shows for ${selectedLikedTvShow.title}: $e');
+        // Handle specific error for this section if needed
       }
     }
 
@@ -130,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _getRandomMediaItem(BuildContext context, {required bool isMovie}) async {
+    HapticFeedback.lightImpact();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -143,7 +144,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       List<MediaItem> potentialPicks = [];
       List<int> preferredGenreIds = [];
 
-      // Get preferred genres
       List<String>? genreIdStrings;
       if (isMovie) {
         genreIdStrings = prefs.getStringList('favoriteMovieGenreIds');
@@ -154,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         preferredGenreIds = genreIdStrings.map((id) => int.parse(id)).toList();
       }
 
-      // 1. Fetch items based on preferred genres (if any)
       if (preferredGenreIds.isNotEmpty) {
         try {
           if (isMovie) {
@@ -171,7 +170,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         }
       }
 
-      // 2. Add popular/top-rated items as a fallback/diversifier
       List<MediaItem> generalPicks = [];
       try {
         if (isMovie) {
@@ -204,8 +202,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         finalSelectionPool.add(item);
         final genreMaps = isMovie ? tmdbService.movieGenres : tmdbService.tvGenres;
         final matchingGenreId = item.genres.firstWhere(
-                (genreName) => preferredGenreIds.contains(genreMaps.entries.firstWhere(
-                    (e) => e.value == genreName, orElse: () => const MapEntry(-1, '')).key),
+                (genreName) => preferredGenreIds.contains(genreMaps.entries
+                .firstWhere((e) => e.value == genreName, orElse: () => const MapEntry(-1, ''))
+                .key),
             orElse: () => '');
 
         if (matchingGenreId.isNotEmpty) {
@@ -258,12 +257,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FilterScreen(isMovie: isMovie),
-                ),
-              ),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FilterScreen(isMovie: isMovie),
+                  ),
+                );
+              },
               icon: Icon(isMovie ? Icons.movie : Icons.tv, size: 36),
               label: Text(
                 isMovie ? 'Movie Deal' : 'TV Deal',
@@ -310,6 +312,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     required BuildContext context,
     required String title,
     required Future<List<MediaItem>> Function() fetchMedia,
+    String emptyMessage = 'No items found.', // New: customizable empty message
+    String? errorMessageContext, // New: Context for error message
   }) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
@@ -332,18 +336,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator(color: colorScheme.primary));
               } else if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Error loading $title: ${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: textTheme.bodyMedium?.copyWith(color: colorScheme.error),
-                    ),
-                  ),
+                // Use the new ErrorDisplayWidget
+                return ErrorDisplayWidget(
+                  message: 'Failed to load ${errorMessageContext ?? title}. Please try again later.',
+                  onRetry: () {
+                    // Trigger a reload of the specific section.
+                    // This is a simplified example; a more complex state management
+                    // might expose a `reloadMedia` method for each section.
+                    // For now, we trigger a full screen setState, which might
+                    // refetch other sections too.
+                    setState(() {});
+                  },
                 );
               } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return Center(child: Text('No $title found.', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)));
+                return Center(child: Text(emptyMessage, style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)));
               }
               for (var i = 0; i < min(3, snapshot.data!.length); i++) {
                 precacheImage(NetworkImage(snapshot.data![i].posterUrl), context);
@@ -357,6 +363,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   final heroTag = '${title.replaceAll(' ', '_').toLowerCase()}_poster_${item.id}_${item.isMovie}';
                   return GestureDetector(
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -426,8 +433,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_isOffline) {
       return OfflineScreen(
         onRetry: () {
+          HapticFeedback.lightImpact();
           _checkConnectivity();
-          setState(() {});
+          // No need for setState here, _checkConnectivity will update _isOffline and trigger rebuild
         },
       );
     }
@@ -443,6 +451,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             icon: Icon(Icons.settings_outlined, color: colorScheme.onSurfaceVariant),
             tooltip: 'Settings',
             onPressed: () {
+              HapticFeedback.lightImpact();
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -455,6 +464,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           indicatorColor: colorScheme.primary,
           labelColor: colorScheme.primary,
           unselectedLabelColor: colorScheme.onSurfaceVariant,
+          onTap: (index) {
+            HapticFeedback.lightImpact();
+          },
           tabs: const [
             Tab(text: 'Movies'),
             Tab(text: 'TV Shows'),
@@ -469,32 +481,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               children: [
                 _buildCategoryButtonsSection(context: context, mediaType: MediaType.movie),
-                // New: Single "Because you liked..." section for Movies
                 if (_isLoadingLikedRecommendations)
                   Center(child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: CircularProgressIndicator(color: colorScheme.primary)
                   ))
-                else if (_likedMovieRecommendation != null && _likedMovieRecommendation!.value.isNotEmpty)
-                  _buildMediaCarouselSection(
-                    context: context,
-                    title: 'Because you liked "${_likedMovieRecommendation!.key}"',
-                    fetchMedia: () async => _likedMovieRecommendation!.value, // Directly use the fetched similar items
+                else
+                  if (_likedMovieRecommendation != null && _likedMovieRecommendation!.value.isNotEmpty)
+                    _buildMediaCarouselSection(
+                      context: context,
+                      title: 'Because you liked "${_likedMovieRecommendation!.key}"',
+                      fetchMedia: () async => _likedMovieRecommendation!.value,
+                      emptyMessage: 'No similar movies found for your liked item.',
+                      errorMessageContext: 'similar movies',
+                    ),
+                // Handle case where no liked movie recommendation could be fetched or found
+                if(!_isLoadingLikedRecommendations && (_likedMovieRecommendation == null || _likedMovieRecommendation!.value.isEmpty))
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text(
+                          'Because you liked movies...',
+                          style: textTheme.titleLarge,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                        child: Center(
+                          child: Text(
+                            'Rate more movies in your library to get personalized recommendations here!',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Popular Movies Today',
                   fetchMedia: tmdbService.getPopularMovies,
+                  emptyMessage: 'No popular movies found.',
+                  errorMessageContext: 'popular movies',
                 ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Upcoming Movies',
                   fetchMedia: tmdbService.getUpcomingMovies,
+                  emptyMessage: 'No upcoming movies found.',
+                  errorMessageContext: 'upcoming movies',
                 ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Highest Rated Movies',
                   fetchMedia: tmdbService.getTopRatedMovies,
+                  emptyMessage: 'No highly rated movies found.',
+                  errorMessageContext: 'highest rated movies',
                 ),
                 const SizedBox(height: 20),
               ],
@@ -505,32 +548,63 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               children: [
                 _buildCategoryButtonsSection(context: context, mediaType: MediaType.tv),
-                // New: Single "Because you liked..." section for TV Shows
                 if (_isLoadingLikedRecommendations)
                   Center(child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: CircularProgressIndicator(color: colorScheme.primary)
                   ))
-                else if (_likedTvShowRecommendation != null && _likedTvShowRecommendation!.value.isNotEmpty)
-                  _buildMediaCarouselSection(
-                    context: context,
-                    title: 'Because you liked "${_likedTvShowRecommendation!.key}"',
-                    fetchMedia: () async => _likedTvShowRecommendation!.value, // Directly use the fetched similar items
+                else
+                  if (_likedTvShowRecommendation != null && _likedTvShowRecommendation!.value.isNotEmpty)
+                    _buildMediaCarouselSection(
+                      context: context,
+                      title: 'Because you liked "${_likedTvShowRecommendation!.key}"',
+                      fetchMedia: () async => _likedTvShowRecommendation!.value,
+                      emptyMessage: 'No similar TV shows found for your liked item.',
+                      errorMessageContext: 'similar TV shows',
+                    ),
+                // Handle case where no liked TV show recommendation could be fetched or found
+                if(!_isLoadingLikedRecommendations && (_likedTvShowRecommendation == null || _likedTvShowRecommendation!.value.isEmpty))
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text(
+                          'Because you liked TV Shows...',
+                          style: textTheme.titleLarge,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                        child: Center(
+                          child: Text(
+                            'Rate more TV shows in your library to get personalized recommendations here!',
+                            textAlign: TextAlign.center,
+                            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Popular TV Shows Today',
                   fetchMedia: tmdbService.getPopularTVShows,
+                  emptyMessage: 'No popular TV shows found.',
+                  errorMessageContext: 'popular TV shows',
                 ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Top Airing TV Shows',
                   fetchMedia: tmdbService.getTopAiringTVShows,
+                  emptyMessage: 'No top airing TV shows found.',
+                  errorMessageContext: 'top airing TV shows',
                 ),
                 _buildMediaCarouselSection(
                   context: context,
                   title: 'Highest Rated TV Shows',
                   fetchMedia: tmdbService.getTopRatedTVShows,
+                  emptyMessage: 'No highly rated TV shows found.',
+                  errorMessageContext: 'highest rated TV shows',
                 ),
                 const SizedBox(height: 20),
               ],

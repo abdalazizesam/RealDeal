@@ -53,18 +53,16 @@ class LibraryProvider with ChangeNotifier {
     MediaItem updatedItem = item;
 
     if (index != -1) {
-      // Item exists, update its properties
       updatedItem = _libraryItems[index].copyWith(
         libraryStatus: newStatus,
-        userRating: newStatus == LibraryStatus.completed ? userRating : null, // Only keep rating if completed
-        currentProgress: newStatus == LibraryStatus.watching // Only keep progress if watching
+        userRating: newStatus == LibraryStatus.completed ? userRating : null,
+        currentProgress: newStatus == LibraryStatus.watching
             ? (progress ?? _libraryItems[index].currentProgress ?? 0)
-            : (newStatus == LibraryStatus.completed ? (item.isMovie ? 1 : null) : null), // For completed movies, set progress to 1
+            : (newStatus == LibraryStatus.completed ? (item.isMovie ? 1 : null) : null),
         note: note,
       );
       _libraryItems[index] = updatedItem;
     } else {
-      // New item, add it to the library
       updatedItem = item.copyWith(
         libraryStatus: newStatus,
         userRating: newStatus == LibraryStatus.completed ? userRating : null,
@@ -83,12 +81,10 @@ class LibraryProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Methods to get items by their specific status
   List<MediaItem> getItemsByStatus(LibraryStatus status) {
     return _libraryItems.where((item) => item.libraryStatus == status).toList();
   }
 
-  // Update progress for an item that is being watched
   void updateProgress(int id, int totalEpisodesOrMovieStatus, {bool increment = true}) {
     int index = _libraryItems.indexWhere((item) => item.id == id);
     if (index != -1) {
@@ -100,10 +96,8 @@ class LibraryProvider with ChangeNotifier {
       } else {
         currentProgress--;
       }
-      // Clamp progress to be within valid range
       currentProgress = currentProgress.clamp(0, item.isMovie ? 1 : totalEpisodesOrMovieStatus);
 
-      // If item was in another status and progress is updated, move to Watching
       LibraryStatus newStatus = item.libraryStatus;
       if (currentProgress > 0 && item.libraryStatus != LibraryStatus.watching && item.libraryStatus != LibraryStatus.completed) {
         newStatus = LibraryStatus.watching;
@@ -119,7 +113,6 @@ class LibraryProvider with ChangeNotifier {
     }
   }
 
-  // Update user rating for a completed item
   void updateUserRating(int id, double rating) {
     int index = _libraryItems.indexWhere((item) => item.id == id);
     if (index != -1 && _libraryItems[index].libraryStatus == LibraryStatus.completed) {
@@ -127,5 +120,12 @@ class LibraryProvider with ChangeNotifier {
       _saveLibrary();
       notifyListeners();
     }
+  }
+
+  // New method for importing library
+  void replaceAllLibraryItems(List<MediaItem> newItems) {
+    _libraryItems = newItems;
+    _saveLibrary();
+    notifyListeners();
   }
 }

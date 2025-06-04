@@ -1,9 +1,19 @@
+// lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart'; // Import for HapticFeedback
+import 'package:file_picker/file_picker.dart'; // For file picking
+import 'package:path_provider/path_provider.dart'; // For getting directory paths
+import 'package:permission_handler/permission_handler.dart'; // For permissions
+import 'dart:io'; // For File operations
+import 'dart:convert'; // For JSON encoding/decoding
+
 import '../providers/theme_provider.dart';
-import '../models/app_theme_preset.dart'; // Import AppColorPalette and AppThemeMode
+import '../providers/library_provider.dart'; // Import LibraryProvider
+import '../models/app_theme_preset.dart';
+import '../models/media_item.dart'; // Import MediaItem and LibraryStatus
 import 'settings/update_genre_preferences_screen.dart';
 import 'settings/update_media_preferences_screen.dart';
 
@@ -17,10 +27,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _appVersion = 'Loading...';
 
-  // --- Placeholder URLs ---
   final String _privacyPolicyUrl = 'https://github.com/abdalazizesam/RealDeal';
   final String _termsOfServiceUrl = 'https://github.com/abdalazizesam/RealDeal';
-  // --- --- --- --- --- --- --- --- --- --- --- ---
 
   @override
   void initState() {
@@ -57,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showAboutDialog() {
+    HapticFeedback.lightImpact();
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     showDialog(
@@ -90,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               child: Text('Close', style: TextStyle(color: colorScheme.primary)),
               onPressed: () {
+                HapticFeedback.lightImpact();
                 Navigator.of(context).pop();
               },
             ),
@@ -118,50 +128,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textTheme = Theme.of(context).textTheme;
     final selectedPaletteId = themeProvider.selectedColorPalette.id;
 
-    // Limit to the first 4 available color palettes
     final displayedPalettes = ThemeProvider.availableColorPalettes.take(4).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column( // Use Column to stack Wrap and "..." text
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: 12.0, // Adjusted spacing for 4 circles
-            runSpacing: 12.0, // Adjusted runSpacing
+            spacing: 12.0,
+            runSpacing: 12.0,
             alignment: WrapAlignment.start,
             children: displayedPalettes.asMap().entries.map((entry) {
               final index = entry.key;
               final palette = entry.value;
               bool isSelected = selectedPaletteId == palette.id;
 
-              // Get dynamic swatch colors based on current effective brightness
               final Color swatch1 = themeProvider.getSwatchColor1(palette);
               final Color swatch2 = themeProvider.getSwatchColor2(palette);
 
-              // Determine text/icon color for checkmark based on swatch background
               Color checkColor = ThemeData.estimateBrightnessForColor(swatch1) == Brightness.dark
                   ? Colors.white70
                   : Colors.black87;
-              if (swatch1 == Colors.black) { // Specific for pure black
+              if (swatch1 == Colors.black) {
                 checkColor = Colors.white70;
               }
 
-              // Determine label text
               String labelText = index == 0 ? 'Default' : palette.name;
 
-              return Column( // Wrap circle and text in a Column
+              return Column(
                 children: [
                   Tooltip(
                     message: palette.name,
                     preferBelow: false,
                     child: GestureDetector(
                       onTap: () {
+                        HapticFeedback.lightImpact();
                         themeProvider.selectColorPalette(palette.id);
                       },
                       child: Container(
-                        width: 48, // Smaller width
-                        height: 48, // Smaller height
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
@@ -182,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             )
                           ],
                         ),
-                        child: ClipOval( // Clip content to oval shape
+                        child: ClipOval(
                           child: Stack(
                             children: [
                               Positioned.fill(
@@ -210,9 +217,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4), // Spacing between circle and text
+                  const SizedBox(height: 4),
                   SizedBox(
-                    width: 60, // Give some width to the text to prevent overflow
+                    width: 60,
                     child: Text(
                       labelText,
                       textAlign: TextAlign.center,
@@ -224,12 +231,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16), // Spacing below the color circles
-          if (ThemeProvider.availableColorPalettes.length > 4) // Only show "..." if there are more palettes
+          const SizedBox(height: 16),
+          if (ThemeProvider.availableColorPalettes.length > 4)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: Text(
-                '...', // Indicate more options
+                '...',
                 style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant),
               ),
             ),
@@ -238,13 +245,225 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _exportLibrary(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    try {
+      // 1. Request permissions (especially for Android)
+      var status = await Permission.storage.request();
+      if (status.isDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Storage permission denied. Cannot export library.', style: TextStyle(color: colorScheme.onErrorContainer)),
+              backgroundColor: colorScheme.errorContainer,
+            ),
+          );
+        }
+        return;
+      }
+      if (status.isPermanentlyDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Storage permission permanently denied. Please enable it in app settings.', style: TextStyle(color: colorScheme.onErrorContainer)),
+              action: SnackBarAction(label: 'Settings', onPressed: openAppSettings, textColor: colorScheme.onErrorContainer),
+              backgroundColor: colorScheme.errorContainer,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. Prepare data
+      final List<Map<String, dynamic>> libraryData =
+      libraryProvider.libraryItems.map((item) => item.toJson()).toList();
+      final String jsonString = json.encode(libraryData);
+
+      // 3. Get a directory for saving
+      final directory = await getDownloadsDirectory(); // Or getApplicationDocumentsDirectory()
+      if (directory == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not access downloads directory to save file.', style: TextStyle(color: colorScheme.onErrorContainer)),
+              backgroundColor: colorScheme.errorContainer,
+            ),
+          );
+        }
+        return;
+      }
+
+      final fileName = 'reeldeallibrary_${DateTime.now().toIso8601String().split('.')[0].replaceAll(':', '-')}.json';
+      final file = File('${directory.path}/$fileName');
+
+      // 4. Write the file
+      await file.writeAsString(jsonString);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Library exported to: ${file.path}', style: TextStyle(color: colorScheme.onSecondaryContainer)),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: colorScheme.secondaryContainer,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(label: 'Open', onPressed: () async {
+              // This is a simple open attempt, might need platform-specific solution for actual "open" file
+              // For demonstration, we just acknowledge.
+              // A proper file opener might require a third-party package or native code.
+            }, textColor: colorScheme.onSecondaryContainer),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error exporting library: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export library: $e', style: TextStyle(color: colorScheme.onErrorContainer)),
+            backgroundColor: colorScheme.errorContainer,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _importLibrary(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    try {
+      // 1. Pick file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File selection cancelled.', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+              backgroundColor: colorScheme.surfaceVariant,
+            ),
+          );
+        }
+        return;
+      }
+
+      final filePath = result.files.single.path;
+      if (filePath == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Selected file path is invalid.', style: TextStyle(color: colorScheme.onErrorContainer)),
+              backgroundColor: colorScheme.errorContainer,
+            ),
+          );
+        }
+        return;
+      }
+
+      final file = File(filePath);
+
+      // 2. Read file content
+      final String jsonString = await file.readAsString();
+
+      // 3. Decode JSON and convert to MediaItem list
+      final List<dynamic> decodedList = json.decode(jsonString);
+      List<MediaItem> importedItems = [];
+      for (var itemJson in decodedList) {
+        try {
+          importedItems.add(MediaItem.fromJson(itemJson));
+        } catch (e) {
+          print('Error parsing item during import: $e. Skipping item: $itemJson');
+          // Optionally show a warning for malformed items
+        }
+      }
+
+      // 4. Confirm with user before replacing/merging
+      bool confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            backgroundColor: colorScheme.surfaceContainerHigh,
+            title: Text('Import Library?', style: textTheme.titleLarge),
+            content: Text(
+              'This will replace your current library with ${importedItems.length} items from the selected file. This action cannot be undone. Are you sure?',
+              style: textTheme.bodyMedium,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(dialogContext, false);
+                },
+                child: Text('Cancel', style: TextStyle(color: colorScheme.primary)),
+              ),
+              TextButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(dialogContext, true);
+                },
+                child: Text('Import', style: TextStyle(color: colorScheme.error)),
+              ),
+            ],
+          );
+        },
+      ) ?? false;
+
+      if (!confirm) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Library import cancelled.', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+              backgroundColor: colorScheme.surfaceVariant,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 5. Update library (replace existing for simplicity; merging is more complex)
+      libraryProvider.replaceAllLibraryItems(importedItems);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Library imported successfully! ${importedItems.length} items loaded.', style: TextStyle(color: colorScheme.onSecondaryContainer)),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            backgroundColor: colorScheme.secondaryContainer,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error importing library: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to import library: $e', style: TextStyle(color: colorScheme.onErrorContainer)),
+            backgroundColor: colorScheme.errorContainer,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final themeProvider = Provider.of<ThemeProvider>(context); // Access ThemeProvider
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
-    // Determine if OLED Black switch should be enabled
     final bool isOledBlackEnabled = themeProvider.selectedThemeMode == AppThemeMode.dark ||
         (themeProvider.selectedThemeMode == AppThemeMode.system &&
             MediaQuery.of(context).platformBrightness == Brightness.dark);
@@ -262,25 +481,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text('Choose your preferred color palette', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
           ),
           _buildColorPaletteSection(context),
-          const SizedBox(height: 16), // Spacing between color palettes and dark mode
+          const SizedBox(height: 16),
 
-          // Dark Mode Section (using Card for Material 3 look)
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            elevation: 1, // Slight elevation
+            elevation: 1,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            color: colorScheme.surfaceContainerLow, // Material 3 surface color
+            color: colorScheme.surfaceContainerLow,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Column(
                 children: [
                   ListTile(
-                    title: Text('Dark Mode', style: textTheme.bodyLarge), // Using bodyLarge for list tile titles
+                    title: Text('Dark Mode', style: textTheme.bodyLarge),
                     subtitle: Text('Choose how the app\'s theme adapts', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
-                    trailing: DropdownButtonHideUnderline( // Hide default underline
+                    trailing: DropdownButtonHideUnderline(
                       child: DropdownButton<AppThemeMode>(
                         value: themeProvider.selectedThemeMode,
                         onChanged: (AppThemeMode? newValue) {
+                          HapticFeedback.lightImpact();
                           if (newValue != null) {
                             themeProvider.selectThemeMode(newValue);
                           }
@@ -300,15 +519,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                           return DropdownMenuItem<AppThemeMode>(
                             value: mode,
-                            child: Text(modeText, style: textTheme.bodyMedium), // Style dropdown text
+                            child: Text(modeText, style: textTheme.bodyMedium),
                           );
                         }).toList(),
-                        dropdownColor: colorScheme.surfaceContainerHigh, // Background for dropdown menu
-                        icon: Icon(Icons.arrow_drop_down_rounded, color: colorScheme.onSurfaceVariant), // Custom dropdown icon
+                        dropdownColor: colorScheme.surfaceContainerHigh,
+                        icon: Icon(Icons.arrow_drop_down_rounded, color: colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ),
-                  // OLED Black Switch (always visible, enabled/disabled based on theme)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: Row(
@@ -317,20 +535,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: Text(
                             'OLED Black',
                             style: textTheme.bodyLarge?.copyWith(
-                              color: isOledBlackEnabled ? colorScheme.onSurface : colorScheme.onSurface.withOpacity(0.38), // Disabled color
+                              color: isOledBlackEnabled ? colorScheme.onSurface : colorScheme.onSurface.withOpacity(0.38),
                             ),
                           ),
                         ),
                         Switch(
                           value: themeProvider.isOledBlack,
-                          onChanged: isOledBlackEnabled // Only enable if condition is true
+                          onChanged: isOledBlackEnabled
                               ? (bool value) {
+                            HapticFeedback.lightImpact();
                             themeProvider.toggleOledBlack(value);
                           }
-                              : null, // Set to null to disable the switch
+                              : null,
                           activeColor: colorScheme.primary,
-                          inactiveThumbColor: colorScheme.outline, // For disabled state thumb
-                          inactiveTrackColor: colorScheme.surfaceContainerHighest, // For disabled state track
+                          inactiveThumbColor: colorScheme.outline,
+                          inactiveTrackColor: colorScheme.surfaceContainerHighest,
                         ),
                       ],
                     ),
@@ -340,7 +559,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-
           _buildSectionHeader('Preferences', context),
           _buildSettingsCard(context, [
             ListTile(
@@ -348,6 +566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text('Update Favorite Genres', style: textTheme.bodyLarge),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () {
+                HapticFeedback.lightImpact();
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const UpdateGenrePreferencesScreen()),
@@ -359,11 +578,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text('Update Favorite Movies/Shows', style: textTheme.bodyLarge),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () {
+                HapticFeedback.lightImpact();
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const UpdateMediaPreferencesScreen()),
                 );
               },
+            ),
+          ]),
+
+          // Library Data Management Section
+          _buildSectionHeader('Library Data', context),
+          _buildSettingsCard(context, [
+            ListTile(
+              leading: Icon(Icons.file_upload_rounded, color: colorScheme.onSurfaceVariant),
+              title: Text('Import Library', style: textTheme.bodyLarge),
+              subtitle: Text('Load library data from a file', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+              onTap: () => _importLibrary(context),
+            ),
+            ListTile(
+              leading: Icon(Icons.file_download_rounded, color: colorScheme.onSurfaceVariant),
+              title: Text('Export Library', style: textTheme.bodyLarge),
+              subtitle: Text('Save your library data to a file', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+              onTap: () => _exportLibrary(context),
             ),
           ]),
 
@@ -379,12 +616,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ListTile(
               leading: Icon(Icons.shield_outlined, color: colorScheme.onSurfaceVariant),
               title: Text('Privacy Policy', style: textTheme.bodyLarge),
-              onTap: () => _launchUrl(_privacyPolicyUrl),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _launchUrl(_privacyPolicyUrl);
+              },
             ),
             ListTile(
               leading: Icon(Icons.description_outlined, color: colorScheme.onSurfaceVariant),
               title: Text('Terms of Service', style: textTheme.bodyLarge),
-              onTap: () => _launchUrl(_termsOfServiceUrl),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _launchUrl(_termsOfServiceUrl);
+              },
             ),
           ]),
           const SizedBox(height: 20),
@@ -393,7 +636,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // New helper widget for consistent card styling around ListTiles
   Widget _buildSettingsCard(BuildContext context, List<Widget> children) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(

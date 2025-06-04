@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 import '../models/media_item.dart';
 import '../providers/library_provider.dart';
 import 'details_screen.dart';
 import '../services/tmdb_service.dart';
+import '../widgets/error_display_widget.dart'; // Assuming you created this from home_screen updates
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({Key? key}) : super(key: key);
@@ -60,6 +62,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   }
 
   void _showSortOptions() {
+    HapticFeedback.lightImpact(); // Haptic feedback on opening sort options
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -101,7 +104,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               const SizedBox(height: 8),
               _buildSortOption(
                 title: 'Date Added',
-                icon: Icons.calendar_today_rounded,
+                icon: Icons.calendar_today_rounded, // Specific icon for 'date_added'
                 value: 'date_added',
               ),
               _buildSortOption(
@@ -134,6 +137,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          HapticFeedback.lightImpact(); // Haptic feedback on sort option selection
           Navigator.pop(context);
           setState(() {
             sortBy = value;
@@ -150,6 +154,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
           child: Row(
             children: [
               Icon(
+                // Use a more specific icon for date_added when selected
                 isSelected ? (value == 'rating' ? Icons.star_rounded : (value == 'title' ? Icons.sort_by_alpha_rounded : Icons.event_available_rounded)) : icon,
                 color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
                 size: 22,
@@ -182,22 +187,19 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     final textTheme = Theme.of(context).textTheme;
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
 
-    // Filter items based on the selected media type
     final filteredItems = items.where((item) => item.isMovie == _showMovies).toList();
 
     if (filteredItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Lottie.asset('assets/empty.json', width: 200, height: 200),
-            const SizedBox(height: 16),
-            Text(
-              'No items in this category.',
-              style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
+      String message;
+      if (_showMovies) {
+        message = 'No movies in this category. Start adding some from search or homepage!';
+      } else {
+        message = 'No TV shows in this category. Start adding some from search or homepage!';
+      }
+
+      return ErrorDisplayWidget( // Reusing the ErrorDisplayWidget for empty states
+        message: message,
+        icon: Icons.movie_filter_rounded, // A relevant icon for empty state
       );
     }
 
@@ -208,10 +210,8 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
         final item = filteredItems[index];
         final heroTag = 'library_poster_${item.id}_${item.isMovie}';
 
-        // --- Start of Trailing Actions Logic ---
         List<Widget> trailingActions = [];
 
-        // For "Watching" items, primarily show increment, and decrement if progress exists
         if (item.libraryStatus == LibraryStatus.watching) {
           // Decrement button (only visible if current progress is greater than 0)
           if ((item.currentProgress ?? 0) > 0) {
@@ -220,6 +220,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 icon: Icon(Icons.remove_circle_outline_rounded, color: colorScheme.primary),
                 tooltip: 'Decrement progress',
                 onPressed: () async {
+                  HapticFeedback.lightImpact(); // Haptic feedback on decrement
                   int? totalEpisodes;
                   if (!item.isMovie) {
                     totalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
@@ -229,12 +230,17 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                   if (totalEpisodes == null || totalEpisodes <= 0) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not determine total episodes/movie length to decrement progress.')),
+                        SnackBar(content: Text('Could not determine total episodes/movie length to decrement progress. Please check internet and refresh the item details.')),
                       );
                     }
                     return;
                   }
                   libraryProvider.updateProgress(item.id, totalEpisodes, increment: false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${item.title} progress decremented!')),
+                    );
+                  }
                 },
               ),
             );
@@ -246,6 +252,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               icon: Icon(Icons.add_circle_outline_rounded, color: colorScheme.primary),
               tooltip: 'Mark progress',
               onPressed: () async {
+                HapticFeedback.lightImpact(); // Haptic feedback on increment
                 int? totalEpisodes;
                 if (!item.isMovie) {
                   totalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
@@ -256,7 +263,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 if (totalEpisodes == null || totalEpisodes <= 0) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not determine total episodes/movie length to update progress.')),
+                      SnackBar(content: Text('Could not determine total episodes/movie length to update progress. Please check internet and refresh the item details.')),
                     );
                   }
                   return;
@@ -265,11 +272,21 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 int currentProgress = item.currentProgress ?? 0;
                 if (currentProgress < totalEpisodes) {
                   libraryProvider.updateProgress(item.id, totalEpisodes, increment: true);
-
                   if ((currentProgress + 1) == totalEpisodes) {
                     _showRatingDialog(context, item, libraryProvider, item.userRating ?? 5.0, item.note, (rating, note) {
                       libraryProvider.updateItemStatus(item, LibraryStatus.completed, userRating: rating, progress: item.isMovie ? 1 : null, note: note);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${item.title} marked as completed!')),
+                        );
+                      }
                     });
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('${item.title} progress updated!')),
+                      );
+                    }
                   }
                 } else {
                   if (mounted) {
@@ -288,24 +305,40 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               icon: Icon(Icons.star_half_rounded, color: colorScheme.primary),
               tooltip: 'Change rating',
               onPressed: () {
+                HapticFeedback.lightImpact(); // Haptic feedback on rating button
                 _showRatingDialog(context, item, libraryProvider, item.userRating ?? 5.0, item.note, (rating, note) {
                   libraryProvider.updateUserRating(item.id, rating);
                   libraryProvider.updateItemStatus(item, item.libraryStatus, note: note); // Update note
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${item.title} rating updated!')),
+                    );
+                  }
                 });
               },
             ),
           );
         }
-        // --- End of Trailing Actions Logic ---
-
 
         return Card(
           elevation: 1.5,
           margin: const EdgeInsets.symmetric(vertical: 6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
           clipBehavior: Clip.antiAlias,
-          child: InkWell( // Use InkWell for splash effect on long press
-            onLongPress: () => _showEditItemDialog(context, item, libraryProvider),
+          child: InkWell(
+            onLongPress: () {
+              HapticFeedback.mediumImpact(); // Haptic feedback on long press to edit
+              _showEditItemDialog(context, item, libraryProvider);
+            },
+            onTap: () {
+              HapticFeedback.lightImpact(); // Haptic feedback on tap to details
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DetailsScreen(item: item, heroTag: heroTag),
+                ),
+              );
+            },
             child: ListTile(
               contentPadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
               leading: Hero(
@@ -371,11 +404,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                       builder: (context, snapshot) {
                         String progressText = "Not Started";
                         if (item.isMovie) {
-                          if (item.currentProgress != null && item.currentProgress! > 0) {
-                            progressText = "${item.currentProgress}/1";
-                          } else {
-                            progressText = "0/1";
-                          }
+                          progressText = "${item.currentProgress ?? 0}/1";
                         } else { // It's a TV show
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             progressText = "Loading progress...";
@@ -383,11 +412,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                             progressText = "Error loading total episodes";
                           } else {
                             final int? totalEpisodes = snapshot.data;
-                            if (item.currentProgress != null && item.currentProgress! > 0) {
-                              progressText = "${item.currentProgress}/${totalEpisodes ?? '?'}";
-                            } else if (totalEpisodes != null) {
-                              progressText = "0/${totalEpisodes}";
-                            }
+                            progressText = "${item.currentProgress ?? 0}/${totalEpisodes ?? '?'}";
                           }
                         }
                         return Text(
@@ -421,14 +446,6 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 mainAxisSize: MainAxisSize.min,
                 children: trailingActions,
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailsScreen(item: item, heroTag: heroTag),
-                  ),
-                );
-              },
             ),
           ),
         ).animate()
@@ -468,6 +485,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                         setState(() {
                           _dialogRating = newValue;
                         });
+                        HapticFeedback.lightImpact(); // Haptic feedback on slider drag
                       },
                     ),
                     const SizedBox(height: 16),
@@ -506,12 +524,14 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
             TextButton(
               child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
               onPressed: () {
+                HapticFeedback.lightImpact(); // Haptic feedback on cancel
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
               child: Text('Save', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
               onPressed: () {
+                HapticFeedback.lightImpact(); // Haptic feedback on save
                 onRatingSubmitted(_dialogRating, _noteController.text.isEmpty ? null : _noteController.text);
                 Navigator.of(context).pop();
               },
@@ -522,26 +542,23 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     );
   }
 
-
-  // New: Show Edit Item Dialog
   void _showEditItemDialog(BuildContext context, MediaItem item, LibraryProvider libraryProvider) async {
     LibraryStatus _selectedStatus = item.libraryStatus;
     double _dialogUserRating = item.userRating ?? 5.0;
     int _dialogCurrentProgress = item.currentProgress ?? 0;
     TextEditingController _noteController = TextEditingController(text: item.note);
 
-    // Fetch total episodes if it's a TV show and not already set
     if (!item.isMovie && (item.totalEpisodes == null || item.totalEpisodes == 0)) {
       int? fetchedTotalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
       if (fetchedTotalEpisodes != null) {
-        item.totalEpisodes = fetchedTotalEpisodes; // Update item in place for current dialog session
+        item.totalEpisodes = fetchedTotalEpisodes;
       }
     }
-    final int actualTotalEpisodes = item.isMovie ? 1 : (item.totalEpisodes ?? 1); // Ensure totalEpisodes is valid
+    final int actualTotalEpisodes = item.isMovie ? 1 : (item.totalEpisodes ?? 1);
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Allows content to take full height
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
       useSafeArea: true,
@@ -604,6 +621,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                   _dialogCurrentProgress = 0; // Reset progress if not watching/completed
                                 }
                               });
+                              HapticFeedback.lightImpact(); // Haptic feedback on status change
                             },
                             activeColor: colorScheme.primary,
                             dense: true,
@@ -613,7 +631,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                       const SizedBox(height: 16),
 
                       if (_selectedStatus == LibraryStatus.watching) ...[
-                        Text('Progress (Episodes)', style: textTheme.titleMedium),
+                        Text(item.isMovie ? 'Movie Progress' : 'Episodes Progress', style: textTheme.titleMedium), // Dynamic title for progress
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -623,6 +641,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                 setState(() {
                                   _dialogCurrentProgress = (_dialogCurrentProgress - 1).clamp(0, actualTotalEpisodes);
                                 });
+                                HapticFeedback.lightImpact(); // Haptic feedback on progress change
                               },
                             ),
                             Expanded(
@@ -636,6 +655,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                   setState(() {
                                     _dialogCurrentProgress = newValue.toInt();
                                   });
+                                  HapticFeedback.lightImpact(); // Haptic feedback on slider drag
                                 },
                                 activeColor: colorScheme.primary,
                                 inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
@@ -647,6 +667,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                 setState(() {
                                   _dialogCurrentProgress = (_dialogCurrentProgress + 1).clamp(0, actualTotalEpisodes);
                                 });
+                                HapticFeedback.lightImpact(); // Haptic feedback on progress change
                               },
                             ),
                           ],
@@ -676,6 +697,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                             setState(() {
                               _dialogUserRating = newValue;
                             });
+                            HapticFeedback.lightImpact(); // Haptic feedback on slider drag
                           },
                           activeColor: colorScheme.primary,
                           inactiveColor: colorScheme.onSurfaceVariant.withOpacity(0.3),
@@ -718,8 +740,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () {
+                                HapticFeedback.heavyImpact(); // Heavy haptic for destructive action
                                 libraryProvider.removeFromLibrary(item.id);
-                                _tmdbService.invalidateTvDetailsCache(item.id);
+                                _tmdbService.invalidateTvDetailsCache(item.id); // Invalidate cache if TV show
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -744,11 +767,12 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           Expanded(
                             child: FilledButton(
                               onPressed: () {
+                                HapticFeedback.lightImpact(); // Haptic feedback on save
                                 libraryProvider.updateItemStatus(
                                   item,
                                   _selectedStatus,
                                   userRating: _selectedStatus == LibraryStatus.completed ? _dialogUserRating : null,
-                                  progress: _selectedStatus == LibraryStatus.watching || _selectedStatus == LibraryStatus.completed ? _dialogCurrentProgress : null,
+                                  progress: (_selectedStatus == LibraryStatus.watching || _selectedStatus == LibraryStatus.completed) ? _dialogCurrentProgress : null,
                                   note: _noteController.text.isEmpty ? null : _noteController.text, // Pass the updated note
                                 );
                                 Navigator.pop(context); // Close dialog
@@ -765,7 +789,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8), // Padding below buttons
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -776,7 +800,6 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
       },
     );
   }
-
 
   Color _getRatingColor(double rating, ColorScheme colorScheme) {
     if (rating >= 7.5) return Colors.green.shade400;
@@ -789,41 +812,58 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final Brightness brightness = Theme.of(context).brightness;
+
+    final Color unselectedContentColor = brightness == Brightness.dark ? Colors.white : Colors.black;
 
     return Scaffold(
-      body: NestedScrollView( // Use NestedScrollView for collapisble app bar
+      body: NestedScrollView(
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return <Widget>[
             SliverAppBar(
-              title: Text('My Library', style: textTheme.headlineSmall), // Larger title for M3
-              pinned: true, // Remains visible at the top
-              floating: true, // Floats out when scrolling up
-              snap: true, // Snaps to fully visible or fully hidden
-              backgroundColor: colorScheme.surface, // Use surface for app bar background
-              elevation: innerBoxIsScrolled ? 4.0 : 0.0, // Add shadow when scrolled
-              forceElevated: innerBoxIsScrolled, // Ensure elevation is drawn
+              title: Text('My Library', style: textTheme.headlineSmall),
+              pinned: true,
+              floating: true,
+              snap: true,
+              backgroundColor: colorScheme.surface,
+              elevation: innerBoxIsScrolled ? 4.0 : 0.0,
+              forceElevated: innerBoxIsScrolled,
 
-              // Preferred size for the flexible space before tabs and actions
-              toolbarHeight: kToolbarHeight, // Default toolbar height
+              toolbarHeight: kToolbarHeight,
 
               bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(kToolbarHeight + 56), // Height of SegmentedButton + TabBar
+                preferredSize: const Size.fromHeight(kToolbarHeight + 56),
                 child: Column(
                   children: [
-                    // Segmented button for Movie/TV Show selection
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                       child: SegmentedButton<bool>(
                         segments: <ButtonSegment<bool>>[
                           ButtonSegment<bool>(
                             value: true,
-                            label: Text('Movies', style: textTheme.labelLarge), // M3 label style
-                            icon: const Icon(Icons.movie_filter_rounded),
+                            label: Text(
+                              'Movies',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: _showMovies ? colorScheme.primary : unselectedContentColor,
+                              ),
+                            ),
+                            icon: Icon(
+                              Icons.movie_filter_rounded,
+                              color: _showMovies ? colorScheme.primary : unselectedContentColor,
+                            ),
                           ),
                           ButtonSegment<bool>(
                             value: false,
-                            label: Text('TV Shows', style: textTheme.labelLarge), // M3 label style
-                            icon: const Icon(Icons.tv_rounded),
+                            label: Text(
+                              'TV Shows',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: !_showMovies ? colorScheme.primary : unselectedContentColor,
+                              ),
+                            ),
+                            icon: Icon(
+                              Icons.tv_rounded,
+                              color: !_showMovies ? colorScheme.primary : unselectedContentColor,
+                            ),
                           ),
                         ],
                         selected: <bool>{_showMovies},
@@ -831,10 +871,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           setState(() {
                             _showMovies = newSelection.first;
                           });
+                          HapticFeedback.lightImpact(); // Haptic feedback on segmented button change
                         },
                         style: SegmentedButton.styleFrom(
-                          foregroundColor: colorScheme.onSurface,
-                          selectedForegroundColor: colorScheme.primary,
                           selectedBackgroundColor: colorScheme.primaryContainer,
                           side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -848,10 +887,13 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                       labelColor: colorScheme.primary,
                       unselectedLabelColor: colorScheme.onSurfaceVariant,
                       isScrollable: true,
-                      labelStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold), // M3 label style
-                      unselectedLabelStyle: textTheme.labelLarge, // M3 label style
-                      indicatorSize: TabBarIndicatorSize.tab, // Indicator covers entire tab
-                      indicatorPadding: EdgeInsets.zero, // No extra padding for indicator
+                      labelStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                      unselectedLabelStyle: textTheme.labelLarge,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicatorPadding: EdgeInsets.zero,
+                      onTap: (index) {
+                        HapticFeedback.lightImpact(); // Haptic feedback on tab change
+                      },
                       tabs: _libraryStatuses.map((status) {
                         String label = status.name.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
                         label = label.substring(0, 1).toUpperCase() + label.substring(1);
@@ -862,10 +904,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 ),
               ),
               actions: [
-                // Sort button
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Tooltip( // Added tooltip for accessibility
+                  child: Tooltip(
                     message: 'Sort library items',
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),

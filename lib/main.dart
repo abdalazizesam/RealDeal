@@ -9,6 +9,7 @@ import 'screens/onboarding/onboarding_welcome_screen.dart';
 import 'providers/library_provider.dart';
 import 'providers/theme_provider.dart';
 import 'models/app_theme_preset.dart'; // Make sure this is imported for AppThemeMode and AppColorPalette
+import 'package:flutter/services.dart'; // Import for HapticFeedback
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -226,6 +227,7 @@ class _MainScreenState extends State<MainScreen> {
           setState(() {
             _currentIndex = index;
           });
+          HapticFeedback.lightImpact(); // Add haptic feedback here
         },
         items: const [
           BottomNavigationBarItem(

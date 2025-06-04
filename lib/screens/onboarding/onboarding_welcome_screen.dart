@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'onboarding_genre_selection_screen.dart';
+import 'package:flutter/services.dart';
 
 class OnboardingWelcomeScreen extends StatelessWidget {
   const OnboardingWelcomeScreen({Key? key}) : super(key: key);
@@ -43,6 +44,7 @@ class OnboardingWelcomeScreen extends StatelessWidget {
               const SizedBox(height: 48), // Increased spacing before button
               FilledButton(
                 onPressed: () {
+                  HapticFeedback.lightImpact(); // Haptic Feedback
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => const OnboardingGenreSelectionScreen()),

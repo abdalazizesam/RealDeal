@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/tmdb_service.dart';
 import 'onboarding_movie_selection_screen.dart';
+import 'package:flutter/services.dart';
 
 class OnboardingGenreSelectionScreen extends StatefulWidget {
   const OnboardingGenreSelectionScreen({Key? key}) : super(key: key);
@@ -19,6 +20,12 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
   late Map<int, String> _tvGenres;
   bool _isLoading = true;
 
+  // GlobalKeys for hints
+  final GlobalKey _movieGenreHintKey = GlobalKey();
+  final GlobalKey _tvGenreHintKey = GlobalKey();
+  final GlobalKey _nextButtonHintKey = GlobalKey();
+
+
   @override
   void initState() {
     super.initState();
@@ -32,10 +39,22 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
       setState(() {
         _isLoading = false;
       });
+      // You would typically start the showcase here after the UI is built
+      // WidgetsBinding.instance.addPostFrameCallback((_) => _startShowcase());
     }
   }
 
+  // Conceptual method to start showcase (requires a showcase package)
+  // void _startShowcase() {
+  //   ShowCaseWidget.of(context).startShowCase([
+  //     _movieGenreHintKey,
+  //     _tvGenreHintKey,
+  //     _nextButtonHintKey,
+  //   ]);
+  // }
+
   Future<void> _saveAndProceed() async {
+    HapticFeedback.lightImpact(); // Haptic Feedback
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('favoriteMovieGenreIds', _selectedMovieGenreIds.map((id) => id.toString()).toList());
     await prefs.setStringList('favoriteTvGenreIds', _selectedTvGenreIds.map((id) => id.toString()).toList());
@@ -74,10 +93,16 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             const SizedBox(height: 24),
 
             // Movie Genres Section
+            // Wrap with a conceptual Showcase widget for hinting
+            // Showcase(
+            //   key: _movieGenreHintKey,
+            //   description: 'Tap on genres you like to select them for movies.',
+            //   child:
             Text(
               'Movie Genres',
               style: textTheme.titleMedium,
             ),
+            // ),
             const SizedBox(height: 12), // Increased spacing
             Wrap(
               spacing: 10.0, // Adjusted spacing between chips
@@ -90,6 +115,7 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
                   label: Text(genreName),
                   selected: isSelected,
                   onSelected: (bool selected) {
+                    HapticFeedback.lightImpact(); // Haptic Feedback
                     setState(() {
                       if (selected) {
                         _selectedMovieGenreIds.add(genreId);
@@ -116,10 +142,16 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             const SizedBox(height: 32), // Increased spacing between sections
 
             // TV Show Genres Section
+            // Wrap with a conceptual Showcase widget for hinting
+            // Showcase(
+            //   key: _tvGenreHintKey,
+            //   description: 'Do the same for TV show genres.',
+            //   child:
             Text(
               'TV Show Genres',
               style: textTheme.titleMedium,
             ),
+            // ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 10.0,
@@ -132,6 +164,7 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
                   label: Text(genreName),
                   selected: isSelected,
                   onSelected: (bool selected) {
+                    HapticFeedback.lightImpact(); // Haptic Feedback
                     setState(() {
                       if (selected) {
                         _selectedTvGenreIds.add(genreId);
@@ -157,6 +190,11 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             ),
             const SizedBox(height: 40), // Increased spacing before button
             Center(
+              // Wrap with a conceptual Showcase widget for hinting
+              // Showcase(
+              //   key: _nextButtonHintKey,
+              //   description: 'Once you\'re done, tap here to continue!',
+              //   child:
               child: FilledButton(
                 onPressed: (_selectedMovieGenreIds.isNotEmpty || _selectedTvGenreIds.isNotEmpty)
                     ? _saveAndProceed
@@ -171,6 +209,7 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
                 ),
                 child: const Text('Next'),
               ),
+              // ),
             ),
           ],
         ),

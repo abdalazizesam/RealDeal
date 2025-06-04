@@ -7,57 +7,105 @@ class ThemeProvider with ChangeNotifier {
   static const String _selectedThemeModeKey = 'selected_theme_mode';
   static const String _isOledBlackKey = 'is_oled_black';
 
-  // Define available color palettes with both light and dark swatches
+  // Removed: static const String _selectedLocaleKey = 'selected_locale';
+
   static final List<AppColorPalette> availableColorPalettes = [
     AppColorPalette(
-        id: 'red', name: 'Crimson', seedColor: Colors.red,
-        swatchColor1Light: Colors.red, swatchColor2Light: Colors.red.shade200,
-        swatchColor1Dark: Colors.redAccent, swatchColor2Dark: Colors.red.shade700),
+        id: 'red',
+        name: 'Crimson',
+        seedColor: Colors.red,
+        swatchColor1Light: Colors.red,
+        swatchColor2Light: Colors.red.shade200,
+        swatchColor1Dark: Colors.redAccent,
+        swatchColor2Dark: Colors.red.shade700),
     AppColorPalette(
-        id: 'blue', name: 'Azure', seedColor: Colors.blue,
-        swatchColor1Light: Colors.blue, swatchColor2Light: Colors.blue.shade200,
-        swatchColor1Dark: Colors.lightBlueAccent, swatchColor2Dark: Colors.blue.shade700),
+        id: 'blue',
+        name: 'Azure',
+        seedColor: Colors.blue,
+        swatchColor1Light: Colors.blue,
+        swatchColor2Light: Colors.blue.shade200,
+        swatchColor1Dark: Colors.lightBlueAccent,
+        swatchColor2Dark: Colors.blue.shade700),
     AppColorPalette(
-        id: 'green', name: 'Forest', seedColor: Colors.green,
-        swatchColor1Light: Colors.green, swatchColor2Light: Colors.green.shade200,
-        swatchColor1Dark: Colors.lightGreenAccent, swatchColor2Dark: Colors.green.shade700),
+        id: 'green',
+        name: 'Forest',
+        seedColor: Colors.green,
+        swatchColor1Light: Colors.green,
+        swatchColor2Light: Colors.green.shade200,
+        swatchColor1Dark: Colors.lightGreenAccent,
+        swatchColor2Dark: Colors.green.shade700),
     AppColorPalette(
-        id: 'purple', name: 'Amethyst', seedColor: Colors.deepPurple,
-        swatchColor1Light: Colors.deepPurple, swatchColor2Light: Colors.deepPurple.shade200,
-        swatchColor1Dark: Colors.deepPurpleAccent, swatchColor2Dark: Colors.deepPurple.shade700),
+        id: 'purple',
+        name: 'Amethyst',
+        seedColor: Colors.deepPurple,
+        swatchColor1Light: Colors.deepPurple,
+        swatchColor2Light: Colors.deepPurple.shade200,
+        swatchColor1Dark: Colors.deepPurpleAccent,
+        swatchColor2Dark: Colors.deepPurple.shade700),
     AppColorPalette(
-        id: 'orange', name: 'Sunset', seedColor: Colors.orange,
-        swatchColor1Light: Colors.orange, swatchColor2Light: Colors.orange.shade200,
-        swatchColor1Dark: Colors.orangeAccent, swatchColor2Dark: Colors.orange.shade700),
+        id: 'orange',
+        name: 'Sunset',
+        seedColor: Colors.orange,
+        swatchColor1Light: Colors.orange,
+        swatchColor2Light: Colors.orange.shade200,
+        swatchColor1Dark: Colors.orangeAccent,
+        swatchColor2Dark: Colors.orange.shade700),
     AppColorPalette(
-        id: 'teal', name: 'Ocean', seedColor: Colors.teal,
-        swatchColor1Light: Colors.teal, swatchColor2Light: Colors.teal.shade200,
-        swatchColor1Dark: Colors.tealAccent, swatchColor2Dark: Colors.teal.shade700),
+        id: 'teal',
+        name: 'Ocean',
+        seedColor: Colors.teal,
+        swatchColor1Light: Colors.teal,
+        swatchColor2Light: Colors.teal.shade200,
+        swatchColor1Dark: Colors.tealAccent,
+        swatchColor2Dark: Colors.teal.shade700),
     AppColorPalette(
-        id: 'indigo', name: 'Indigo', seedColor: Colors.indigoAccent,
-        swatchColor1Light: Colors.indigo, swatchColor2Light: Colors.indigo.shade200,
-        swatchColor1Dark: Colors.indigoAccent, swatchColor2Dark: Colors.indigo.shade700),
+        id: 'indigo',
+        name: 'Indigo',
+        seedColor: Colors.indigoAccent,
+        swatchColor1Light: Colors.indigo,
+        swatchColor2Light: Colors.indigo.shade200,
+        swatchColor1Dark: Colors.indigoAccent,
+        swatchColor2Dark: Colors.indigo.shade700),
     AppColorPalette(
-        id: 'cyan', name: 'Cyan', seedColor: Colors.cyanAccent,
-        swatchColor1Light: Colors.cyan, swatchColor2Light: Colors.cyan.shade200,
-        swatchColor1Dark: Colors.cyanAccent, swatchColor2Dark: Colors.cyan.shade700),
+        id: 'cyan',
+        name: 'Cyan',
+        seedColor: Colors.cyanAccent,
+        swatchColor1Light: Colors.cyan,
+        swatchColor2Light: Colors.cyan.shade200,
+        swatchColor1Dark: Colors.cyanAccent,
+        swatchColor2Dark: Colors.cyan.shade700),
     AppColorPalette(
-        id: 'amber', name: 'Amber', seedColor: Colors.amber,
-        swatchColor1Light: Colors.amber, swatchColor2Light: Colors.amber.shade200,
-        swatchColor1Dark: Colors.amberAccent, swatchColor2Dark: Colors.amber.shade700),
+        id: 'amber',
+        name: 'Amber',
+        seedColor: Colors.amber,
+        swatchColor1Light: Colors.amber,
+        swatchColor2Light: Colors.amber.shade200,
+        swatchColor1Dark: Colors.amberAccent,
+        swatchColor2Dark: Colors.amber.shade700),
     AppColorPalette(
-        id: 'lime', name: 'Lime', seedColor: Colors.limeAccent,
-        swatchColor1Light: Colors.lime, swatchColor2Light: Colors.lime.shade200,
-        swatchColor1Dark: Colors.limeAccent, swatchColor2Dark: Colors.lime.shade700),
+        id: 'lime',
+        name: 'Lime',
+        seedColor: Colors.limeAccent,
+        swatchColor1Light: Colors.lime,
+        swatchColor2Light: Colors.lime.shade200,
+        swatchColor1Dark: Colors.limeAccent,
+        swatchColor2Dark: Colors.lime.shade700),
     AppColorPalette(
-        id: 'pink', name: 'Pink', seedColor: Colors.pinkAccent,
-        swatchColor1Light: Colors.pink, swatchColor2Light: Colors.pink.shade200,
-        swatchColor1Dark: Colors.pinkAccent, swatchColor2Dark: Colors.pink.shade700),
+        id: 'pink',
+        name: 'Pink',
+        seedColor: Colors.pinkAccent,
+        swatchColor1Light: Colors.pink,
+        swatchColor2Light: Colors.pink.shade200,
+        swatchColor1Dark: Colors.pinkAccent,
+        swatchColor2Dark: Colors.pink.shade700),
   ];
 
-  AppColorPalette _selectedColorPalette = availableColorPalettes.firstWhere((p) => p.id == 'red');
+  AppColorPalette _selectedColorPalette = availableColorPalettes.firstWhere((
+      p) => p.id == 'red');
   AppThemeMode _selectedThemeMode = AppThemeMode.system;
   bool _isOledBlack = false;
+
+  // Removed: Locale? _selectedLocale;
 
   SharedPreferences? _prefs;
 
@@ -66,29 +114,41 @@ class ThemeProvider with ChangeNotifier {
   }
 
   AppColorPalette get selectedColorPalette => _selectedColorPalette;
+
   AppThemeMode get selectedThemeMode => _selectedThemeMode;
+
   bool get isOledBlack => _isOledBlack;
 
-  // The actual Brightness to use for MaterialApp
+  // Removed: Locale? get selectedLocale => _selectedLocale;
+
   Brightness get effectiveBrightness {
     if (_selectedThemeMode == AppThemeMode.system) {
-      // This will be determined by the system in main.dart
       return WidgetsBinding.instance.window.platformBrightness;
     }
-    return _selectedThemeMode == AppThemeMode.dark ? Brightness.dark : Brightness.light;
+    return _selectedThemeMode == AppThemeMode.dark
+        ? Brightness.dark
+        : Brightness.light;
   }
 
-  // Explicit background/surface colors for OLED black mode
-  Color? get explicitBackgroundColor => _isOledBlack && effectiveBrightness == Brightness.dark ? Colors.black : null;
-  Color? get explicitSurfaceColor => _isOledBlack && effectiveBrightness == Brightness.dark ? const Color(0xFF121212) : null;
+  Color? get explicitBackgroundColor =>
+      _isOledBlack && effectiveBrightness == Brightness.dark
+          ? Colors.black
+          : null;
 
-  // New helper to get the correct swatch colors based on current effective brightness
+  Color? get explicitSurfaceColor =>
+      _isOledBlack && effectiveBrightness == Brightness.dark ? const Color(
+          0xFF121212) : null;
+
   Color getSwatchColor1(AppColorPalette palette) {
-    return effectiveBrightness == Brightness.dark ? palette.swatchColor1Dark : palette.swatchColor1Light;
+    return effectiveBrightness == Brightness.dark
+        ? palette.swatchColor1Dark
+        : palette.swatchColor1Light;
   }
 
   Color getSwatchColor2(AppColorPalette palette) {
-    return effectiveBrightness == Brightness.dark ? palette.swatchColor2Dark : palette.swatchColor2Light;
+    return effectiveBrightness == Brightness.dark
+        ? palette.swatchColor2Dark
+        : palette.swatchColor2Light;
   }
 
   Future<void> _initPrefs() async {
@@ -97,9 +157,11 @@ class ThemeProvider with ChangeNotifier {
 
   Future<void> _loadThemePreferences() async {
     await _initPrefs();
-    final String? colorPaletteId = _prefs?.getString(_selectedColorPaletteIdKey);
+    final String? colorPaletteId = _prefs?.getString(
+        _selectedColorPaletteIdKey);
     final String? themeModeString = _prefs?.getString(_selectedThemeModeKey);
     final bool? oledBlack = _prefs?.getBool(_isOledBlackKey);
+    // Removed: final String? localeCode = _prefs?.getString(_selectedLocaleKey);
 
     if (colorPaletteId != null) {
       _selectedColorPalette = availableColorPalettes.firstWhere(
@@ -116,6 +178,13 @@ class ThemeProvider with ChangeNotifier {
     }
 
     _isOledBlack = oledBlack ?? false;
+
+    // Removed:
+    // if (localeCode != null && localeCode.isNotEmpty) {
+    //   _selectedLocale = Locale(localeCode);
+    // } else {
+    //   _selectedLocale = null;
+    // }
 
     notifyListeners();
   }
@@ -152,3 +221,4 @@ class ThemeProvider with ChangeNotifier {
     notifyListeners();
   }
 }
+

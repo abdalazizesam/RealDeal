@@ -1,3 +1,4 @@
+// lib/screens/details_screen.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -5,11 +6,14 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 import '../models/media_item.dart';
 import '../providers/library_provider.dart';
 import '../services/tmdb_service.dart';
 import '../widgets/youtube_player_widget.dart';
+import '../widgets/error_display_widget.dart'; // Import the new error widget
 import 'actor_details_screen.dart';
+
 
 class DetailsScreen extends StatefulWidget {
   final MediaItem item;
@@ -26,23 +30,32 @@ class _DetailsScreenState extends State<DetailsScreen> {
   String? _trailerUrl;
   bool _isLoadingTrailer = true;
   String? _duration;
-  bool _isLoadingDetails = true;
+  bool _isLoadingDetails = true; // Covers general movie/tv details, budget, revenue, status etc.
   List<Map<String, dynamic>> _cast = [];
   bool _isLoadingCast = true;
   List<MediaItem> _similarContent = [];
   bool _isLoadingSimilar = true;
+  bool _isLoadingCrew = true;
 
   Map<String, dynamic>? _watchProviders;
   bool _isLoadingProviders = true;
 
   String? _originalLanguage;
-  String? _originalTitle; // New field
-  String? _status; // New field
+  String? _originalTitle;
+  String? _status;
   int? _budget;
   int? _revenue;
   String? _director;
   List<String> _writers = [];
   List<String> _creators = [];
+
+  // Error flags for individual sections
+  bool _hasTrailerError = false;
+  bool _hasDetailsError = false;
+  bool _hasCastError = false;
+  bool _hasSimilarError = false;
+  bool _hasProvidersError = false;
+  bool _hasCrewError = false;
 
   @override
   void initState() {
@@ -50,6 +63,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     _loadAllDetails();
   }
 
+  // Unified retry method for all sections
   Future<void> _loadAllDetails() async {
     if (!mounted) return;
     setState(() {
@@ -58,39 +72,41 @@ class _DetailsScreenState extends State<DetailsScreen> {
       _isLoadingCast = true;
       _isLoadingSimilar = true;
       _isLoadingProviders = true;
+      _isLoadingCrew = true;
       _duration = null;
       _trailerUrl = null;
       _originalLanguage = null;
-      _originalTitle = null; // Reset
-      _status = null; // Reset
+      _originalTitle = null;
+      _status = null;
       _budget = null;
       _revenue = null;
       _director = null;
       _writers = [];
       _creators = [];
+
+      // Reset error flags
+      _hasTrailerError = false;
+      _hasDetailsError = false;
+      _hasCastError = false;
+      _hasSimilarError = false;
+      _hasProvidersError = false;
+      _hasCrewError = false;
     });
 
-    try {
-      await Future.wait([
-        _loadTrailerAndDurationAndMoreDetails(),
-        _loadCast(),
-        _loadSimilarContent(),
-        _loadWatchProviders(),
-        _loadCrewDetails(),
-      ]);
-    } catch (e) {
-      if (mounted) {
-        print('Error loading details: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load some details: ${e.toString()}', style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-    } finally {
+    // Use Future.wait to load all details concurrently
+    await Future.wait([
+      _loadTrailerAndDurationAndMoreDetails(),
+      _loadCast(),
+      _loadSimilarContent(),
+      _loadWatchProviders(),
+      _loadCrewDetails(),
+    ]).then((_) {
+      // All futures completed (successfully or with error caught internally)
+    }).catchError((e) {
+      // This catch will only hit if one of the futures *itself* doesn't catch its error
+      // and propagates it here. Better to catch inside each load method.
+      print('Unexpected error in Future.wait: $e');
+    }).whenComplete(() {
       if (mounted) {
         setState(() {
           _isLoadingTrailer = false;
@@ -98,14 +114,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
           _isLoadingCast = false;
           _isLoadingSimilar = false;
           _isLoadingProviders = false;
+          _isLoadingCrew = false; // Add this line
         });
       }
-    }
+    });
   }
 
   Future<void> _loadTrailerAndDurationAndMoreDetails() async {
     try {
-      final trailer = await _tmdbService.getTrailerUrl(widget.item.id, widget.item.isMovie);
+      final trailer = await _tmdbService.getTrailerUrl(
+          widget.item.id, widget.item.isMovie);
       if (mounted) {
         setState(() {
           _trailerUrl = trailer;
@@ -140,12 +158,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
     } catch (e) {
       print('Error loading trailer/duration/details: $e');
+      if (mounted) setState(() => _hasDetailsError = true); // Set error flag
     }
   }
 
   Future<void> _loadCast() async {
     try {
-      final castData = await _tmdbService.getCast(widget.item.id, widget.item.isMovie);
+      final castData = await _tmdbService.getCast(
+          widget.item.id, widget.item.isMovie);
       if (mounted) {
         setState(() {
           _cast = castData;
@@ -153,6 +173,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
     } catch (e) {
       print('Error loading cast: $e');
+      if (mounted) setState(() => _hasCastError = true);
     }
   }
 
@@ -171,12 +192,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
     } catch (e) {
       print('Error loading similar content: $e');
+      if (mounted) setState(() => _hasSimilarError = true);
     }
   }
 
   Future<void> _loadWatchProviders() async {
     try {
-      final providers = await _tmdbService.getWatchProviders(widget.item.id, widget.item.isMovie);
+      final providers = await _tmdbService.getWatchProviders(
+          widget.item.id, widget.item.isMovie);
       if (mounted) {
         setState(() {
           _watchProviders = providers;
@@ -184,12 +207,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
       }
     } catch (e) {
       print('Error loading watch providers: $e');
+      if (mounted) setState(() => _hasProvidersError = true);
     }
   }
 
   Future<void> _loadCrewDetails() async {
     try {
-      final crew = await _tmdbService.getCrewDetails(widget.item.id, widget.item.isMovie);
+      final crew = await _tmdbService.getCrewDetails(
+          widget.item.id, widget.item.isMovie);
       if (mounted) {
         final List<String>? directorList = crew['director'];
         String? foundDirector;
@@ -201,20 +226,23 @@ class _DetailsScreenState extends State<DetailsScreen> {
         }
         _director = foundDirector?.isNotEmpty == true ? foundDirector : null;
 
-        _writers = (crew['writers'] as List<String>?)?.where((element) => element.isNotEmpty).toList() ?? [];
-        _creators = (crew['creators'] as List<String>?)?.where((element) => element.isNotEmpty).toList() ?? [];
+        _writers = (crew['writers'] as List<String>?)?.where((element) =>
+        element.isNotEmpty).toList() ?? [];
+        _creators = (crew['creators'] as List<String>?)?.where((element) =>
+        element.isNotEmpty).toList() ?? [];
 
-        setState(() {
-          // State variables are updated above, just need to trigger rebuild
-        });
+        setState(() {}); // Trigger rebuild to show crew details
       }
     } catch (e) {
       print('Error loading crew details: $e');
+      if (mounted) setState(() => _hasCrewError = true);
     }
   }
 
   Widget _buildShimmerPlaceholder({double height = 200, int itemCount = 5}) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
     return SizedBox(
       height: height,
       child: ListView.builder(
@@ -224,7 +252,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
           return Card(
             elevation: 1.0,
             clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0)),
             color: colorScheme.surfaceVariant.withOpacity(0.3),
             margin: const EdgeInsets.only(right: 12),
             child: Shimmer.fromColors(
@@ -236,14 +265,30 @@ class _DetailsScreenState extends State<DetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Container(color: Colors.grey[800]),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Container(
-                        height: 12,
-                        width: 100,
-                        color: Colors.grey[800],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 12,
+                            width: 100,
+                            color: Colors.grey[800],
+                            margin: const EdgeInsets.only(bottom: 4),
+                          ),
+                          Container(
+                            height: 12,
+                            width: 80,
+                            color: Colors.grey[800],
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -257,7 +302,9 @@ class _DetailsScreenState extends State<DetailsScreen> {
   }
 
   Widget _buildShimmerCastPlaceholder() {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
     return SizedBox(
       height: 140,
       child: ListView.builder(
@@ -295,7 +342,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
   String _formatCurrency(int? amount) {
     if (amount == null || amount <= 0) return 'N/A';
-    final formatter = NumberFormat.currency(locale: 'en_US', symbol: '\$', decimalDigits: 0);
+    final formatter = NumberFormat.currency(
+        locale: 'en_US', symbol: '\$', decimalDigits: 0);
     return formatter.format(amount);
   }
 
@@ -303,25 +351,35 @@ class _DetailsScreenState extends State<DetailsScreen> {
     if (code == null || code.isEmpty) return 'N/A';
     try {
       final locale = Locale(code);
-      // Use displayLanguage to get the full name
-      String languageName = locale.toLanguageTag(); // default behavior for unknown locales
+      String languageName = locale.toLanguageTag();
       if (languageName == code) {
-        // Attempt to convert if toLanguageTag is just the code
         switch (code.toLowerCase()) {
-          case 'en': return 'English';
-          case 'fr': return 'French';
-          case 'es': return 'Spanish';
-          case 'de': return 'German';
-          case 'ja': return 'Japanese';
-          case 'ko': return 'Korean';
-          case 'zh': return 'Chinese';
-          case 'ar': return 'Arabic';
-          case 'hi': return 'Hindi';
-          case 'pt': return 'Portuguese';
-          case 'ru': return 'Russian';
-          case 'it': return 'Italian';
-        // Add more as needed
-          default: return code.toUpperCase();
+          case 'en':
+            return 'English';
+          case 'fr':
+            return 'French';
+          case 'es':
+            return 'Spanish';
+          case 'de':
+            return 'German';
+          case 'ja':
+            return 'Japanese';
+          case 'ko':
+            return 'Korean';
+          case 'zh':
+            return 'Chinese';
+          case 'ar':
+            return 'Arabic';
+          case 'hi':
+            return 'Hindi';
+          case 'pt':
+            return 'Portuguese';
+          case 'ru':
+            return 'Russian';
+          case 'it':
+            return 'Italian';
+          default:
+            return code.toUpperCase();
         }
       }
       return languageName;
@@ -330,7 +388,7 @@ class _DetailsScreenState extends State<DetailsScreen> {
     }
   }
 
-  Future<void> _launchWatchProviderUrl(String urlString) async {
+  Future<void> _launchUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
@@ -341,10 +399,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
     }
   }
 
-  // New method to show library status options
-  void _showLibraryStatusOptions(BuildContext context, MediaItem item, LibraryProvider libraryProvider, LibraryStatus currentStatus) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+  void _showLibraryStatusOptions(BuildContext context, MediaItem item,
+      LibraryProvider libraryProvider, LibraryStatus currentStatus) {
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+    final textTheme = Theme
+        .of(context)
+        .textTheme;
 
     showModalBottomSheet(
       context: context,
@@ -352,8 +414,6 @@ class _DetailsScreenState extends State<DetailsScreen> {
       elevation: 0,
       useSafeArea: true,
       builder: (context) {
-        // Using StatefulBuilder to allow the dialog to rebuild its content
-        // For instance, if you wanted to change the UI based on selection within the dialog itself
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return BackdropFilter(
@@ -381,50 +441,69 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Text('Add to Library', style: textTheme.titleMedium?.copyWith(color: colorScheme.onSurface)),
+                      child: Text('Add to Library',
+                          style: textTheme.titleMedium?.copyWith(
+                              color: colorScheme.onSurface)),
                     ),
                     const SizedBox(height: 8),
-                    // Build options for each LibraryStatus
-                    ...LibraryStatus.values.where((status) => status != LibraryStatus.none).map((status) {
+                    ...LibraryStatus.values.where((status) =>
+                    status != LibraryStatus.none).map((status) {
                       return _buildStatusOption(
                         context,
                         status,
                         currentStatus,
                             (selectedStatus) {
-                          Navigator.pop(context); // Close bottom sheet
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
                           if (selectedStatus == LibraryStatus.completed) {
-                            // If completed, show rating dialog
-                            _showRatingDialog(context, item, libraryProvider, item.userRating ?? 5.0, item.note, (rating, note) {
-                              libraryProvider.updateItemStatus(item, selectedStatus, userRating: rating, progress: item.isMovie ? 1 : null, note: note);
-                            });
+                            _showRatingDialog(context, item, libraryProvider,
+                                item.userRating ?? 5.0, item.note, (rating,
+                                    note) {
+                                  libraryProvider.updateItemStatus(
+                                      item, selectedStatus, userRating: rating,
+                                      progress: item.isMovie ? 1 : null,
+                                      note: note);
+                                });
                           } else {
-                            libraryProvider.updateItemStatus(item, selectedStatus);
+                            libraryProvider.updateItemStatus(
+                                item, selectedStatus);
                           }
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${item.title} moved to ${selectedStatus.name.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ').toLowerCase()}'),
+                              content: Text(
+                                  '${item.title} moved to ${selectedStatus.name
+                                      .replaceAll(
+                                      RegExp(r'(?<!^)(?=[A-Z])'), ' ')
+                                      .toLowerCase()}'),
                               behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                           );
                         },
                       );
                     }).toList(),
-                    // Option to remove from library if already present
                     if (currentStatus != LibraryStatus.none)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0, vertical: 8.0),
                         child: TextButton.icon(
-                          icon: Icon(Icons.delete_outline_rounded, color: colorScheme.error),
-                          label: Text('Remove from Library', style: textTheme.bodyLarge?.copyWith(color: colorScheme.error)),
+                          icon: Icon(Icons.delete_outline_rounded,
+                              color: colorScheme.error),
+                          label: Text('Remove from Library',
+                              style: textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.error)),
                           onPressed: () {
-                            Navigator.pop(context); // Close bottom sheet
+                            HapticFeedback.mediumImpact();
+                            Navigator.pop(context);
                             libraryProvider.removeFromLibrary(item.id);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${item.title} removed from your library'),
+                                content: Text(
+                                    '${item.title} removed from your library'),
                                 behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             );
                           },
@@ -440,24 +519,39 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-  // Helper widget to build a single status option in the bottom sheet
-  Widget _buildStatusOption(BuildContext context, LibraryStatus status, LibraryStatus currentStatus, ValueChanged<LibraryStatus> onSelected) {
+  Widget _buildStatusOption(BuildContext context, LibraryStatus status,
+      LibraryStatus currentStatus, ValueChanged<LibraryStatus> onSelected) {
     final bool isSelected = currentStatus == status;
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+    final textTheme = Theme
+        .of(context)
+        .textTheme;
 
-    // Format enum name for display (e.g., "wantToWatch" -> "Want to Watch")
     String title = status.name.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
     title = title.substring(0, 1).toUpperCase() + title.substring(1);
 
     IconData icon;
     switch (status) {
-      case LibraryStatus.watching: icon = Icons.play_circle_outline_rounded; break;
-      case LibraryStatus.wantToWatch: icon = Icons.playlist_add_rounded; break;
-      case LibraryStatus.completed: icon = Icons.check_circle_outline_rounded; break;
-      case LibraryStatus.onHold: icon = Icons.pause_circle_outline_rounded; break;
-      case LibraryStatus.dropped: icon = Icons.cancel_outlined; break;
-      case LibraryStatus.none: icon = Icons.help_outline; break; // Should not be reached
+      case LibraryStatus.watching:
+        icon = Icons.play_circle_outline_rounded;
+        break;
+      case LibraryStatus.wantToWatch:
+        icon = Icons.playlist_add_rounded;
+        break;
+      case LibraryStatus.completed:
+        icon = Icons.check_circle_outline_rounded;
+        break;
+      case LibraryStatus.onHold:
+        icon = Icons.pause_circle_outline_rounded;
+        break;
+      case LibraryStatus.dropped:
+        icon = Icons.cancel_outlined;
+        break;
+      case LibraryStatus.none:
+        icon = Icons.help_outline;
+        break;
     }
 
     return Material(
@@ -469,14 +563,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+            color: isSelected ? colorScheme.primaryContainer : Colors
+                .transparent,
             borderRadius: BorderRadius.circular(12.0),
           ),
           child: Row(
             children: [
               Icon(
                 icon,
-                color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+                color: isSelected ? colorScheme.onPrimaryContainer : colorScheme
+                    .onSurfaceVariant,
                 size: 22,
               ),
               const SizedBox(width: 16),
@@ -484,8 +580,11 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 child: Text(
                   title,
                   style: textTheme.bodyLarge?.copyWith(
-                    color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight
+                        .normal,
                   ),
                 ),
               ),
@@ -502,80 +601,151 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-  // Dialog to allow user to rate a completed item
-  void _showRatingDialog(BuildContext context, MediaItem item, LibraryProvider libraryProvider, double initialRating, String? initialNote, Function(double, String?) onRatingSubmitted) {
-    double _dialogRating = initialRating > 0 ? initialRating : 5.0; // Default rating if none exists
-    TextEditingController _noteController = TextEditingController(text: initialNote);
+  void _showRatingDialog(BuildContext context, MediaItem item,
+      LibraryProvider libraryProvider, double initialRating,
+      String? initialNote, Function(double, String?) onRatingSubmitted) {
+    double _dialogRating = initialRating > 0 ? initialRating : 5.0;
+    TextEditingController _noteController = TextEditingController(
+        text: initialNote);
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-          title: Text('Rate ${item.title}', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28)),
+          backgroundColor: Theme
+              .of(context)
+              .colorScheme
+              .surfaceContainerHigh,
+          title: Text('Rate ${item.title}', style: Theme
+              .of(context)
+              .textTheme
+              .titleLarge
+              ?.copyWith(color: Theme
+              .of(context)
+              .colorScheme
+              .onSurface)),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Your rating: ${_dialogRating.toStringAsFixed(1)}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  Slider(
-                    value: _dialogRating,
-                    min: 0.0,
-                    max: 10.0,
-                    divisions: 20, // 0.5 increments
-                    label: _dialogRating.toStringAsFixed(1),
-                    activeColor: Theme.of(context).colorScheme.primary,
-                    inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
-                    onChanged: (newValue) {
-                      setState(() {
-                        _dialogRating = newValue;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _noteController,
-                    decoration: InputDecoration(
-                      labelText: 'Add a note (optional)',
-                      alignLabelWithHint: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
-                      ),
-                      labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                      floatingLabelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
-                      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6)),
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Your rating: ${_dialogRating.toStringAsFixed(1)}',
+                        style: Theme
+                            .of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Theme
+                            .of(context)
+                            .colorScheme
+                            .onSurfaceVariant)),
+                    Slider(
+                      value: _dialogRating,
+                      min: 0.0,
+                      max: 10.0,
+                      divisions: 20,
+                      label: _dialogRating.toStringAsFixed(1),
+                      activeColor: Theme
+                          .of(context)
+                          .colorScheme
+                          .primary,
+                      inactiveColor: Theme
+                          .of(context)
+                          .colorScheme
+                          .onSurfaceVariant
+                          .withOpacity(0.3),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _dialogRating = newValue;
+                        });
+                        HapticFeedback.lightImpact();
+                      },
                     ),
-                    maxLines: 3,
-                    minLines: 1,
-                    keyboardType: TextInputType.multiline,
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _noteController,
+                      decoration: InputDecoration(
+                        labelText: 'Add a note (optional)',
+                        alignLabelWithHint: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme
+                              .of(context)
+                              .colorScheme
+                              .outline),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme
+                              .of(context)
+                              .colorScheme
+                              .outlineVariant),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Theme
+                              .of(context)
+                              .colorScheme
+                              .primary, width: 2),
+                        ),
+                        labelStyle: Theme
+                            .of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Theme
+                            .of(context)
+                            .colorScheme
+                            .onSurfaceVariant),
+                        floatingLabelStyle: Theme
+                            .of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Theme
+                            .of(context)
+                            .colorScheme
+                            .primary),
+                        hintStyle: Theme
+                            .of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Theme
+                            .of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withOpacity(0.6)),
+                      ),
+                      maxLines: 3,
+                      minLines: 1,
+                      keyboardType: TextInputType.multiline,
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                  ],
+                ),
               );
             },
           ),
           actions: <Widget>[
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              child: Text('Cancel', style: TextStyle(color: Theme
+                  .of(context)
+                  .colorScheme
+                  .primary)),
               onPressed: () {
+                HapticFeedback.lightImpact();
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: Text('Save', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+              child: Text('Save', style: TextStyle(color: Theme
+                  .of(context)
+                  .colorScheme
+                  .primary)),
               onPressed: () {
-                onRatingSubmitted(_dialogRating, _noteController.text.isEmpty ? null : _noteController.text);
+                HapticFeedback.lightImpact();
+                onRatingSubmitted(_dialogRating,
+                    _noteController.text.isEmpty ? null : _noteController.text);
                 Navigator.of(context).pop();
               },
             ),
@@ -585,16 +755,21 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final libraryProvider = Provider.of<LibraryProvider>(context); // Get the provider
-    final MediaItem? currentItemInLibrary = libraryProvider.getItemFromLibrary(widget.item.id);
-    final LibraryStatus currentLibraryStatus = currentItemInLibrary?.libraryStatus ?? LibraryStatus.none;
+    final libraryProvider = Provider.of<LibraryProvider>(context);
+    final MediaItem? currentItemInLibrary = libraryProvider.getItemFromLibrary(
+        widget.item.id);
+    final LibraryStatus currentLibraryStatus = currentItemInLibrary
+        ?.libraryStatus ?? LibraryStatus.none;
     final String? itemNote = currentItemInLibrary?.note;
 
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+    final textTheme = Theme
+        .of(context)
+        .textTheme;
 
     return Scaffold(
       body: CustomScrollView(
@@ -606,7 +781,8 @@ class _DetailsScreenState extends State<DetailsScreen> {
             elevation: 0,
             stretch: true,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              titlePadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
               centerTitle: true,
               background: Stack(
                 fit: StackFit.expand,
@@ -616,11 +792,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     child: CachedNetworkImage(
                       imageUrl: widget.item.backdropUrl,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: colorScheme.surfaceVariant),
-                      errorWidget: (context, url, error) => Container(
-                        color: colorScheme.surfaceVariant,
-                        child: Icon(Icons.broken_image, color: colorScheme.onSurfaceVariant, size: 48),
-                      ),
+                      placeholder: (context, url) =>
+                          Container(color: colorScheme.surfaceVariant),
+                      errorWidget: (context, url, error) =>
+                          Container(
+                            color: colorScheme.surfaceVariant,
+                            child: Icon(Icons.broken_image, color: colorScheme
+                                .onSurfaceVariant, size: 48),
+                          ),
                     ),
                   ),
                   Container(
@@ -652,15 +831,18 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                      icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded, size: 20),
                       color: colorScheme.onSurface,
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).pop();
+                      },
                     ),
                   ),
                 ),
               ),
             ),
-            // Removed actions from AppBar
             actions: const [],
           ),
 
@@ -676,21 +858,25 @@ class _DetailsScreenState extends State<DetailsScreen> {
                       child: Card(
                         elevation: 2.0,
                         clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius
+                            .circular(12)),
                         child: CachedNetworkImage(
                           imageUrl: widget.item.posterUrl,
                           height: 180,
                           width: 120,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: colorScheme.surfaceVariant,
-                            height: 180, width: 120,
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: colorScheme.surfaceVariant,
-                            height: 180, width: 120,
-                            child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant),
-                          ),
+                          placeholder: (context, url) =>
+                              Container(
+                                color: colorScheme.surfaceVariant,
+                                height: 180, width: 120,
+                              ),
+                          errorWidget: (context, url, error) =>
+                              Container(
+                                color: colorScheme.surfaceVariant,
+                                height: 180, width: 120,
+                                child: Icon(Icons.movie_creation_outlined,
+                                    color: colorScheme.onSurfaceVariant),
+                              ),
                         ),
                       ),
                     ),
@@ -701,19 +887,25 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         children: [
                           Text(
                             widget.item.title,
-                            style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                            style: textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.star_rate_rounded, color: Colors.amber, size: 20),
+                              Icon(Icons.star_rate_rounded, color: Colors.amber,
+                                  size: 20),
                               const SizedBox(width: 4),
                               Text(
-                                widget.item.rating == 0.0 ? 'Unrated' : '${widget.item.rating.toStringAsFixed(1)}/10',
+                                widget.item.rating == 0.0
+                                    ? 'Unrated'
+                                    : '${widget.item.rating.toStringAsFixed(
+                                    1)}/10',
                                 style: textTheme.bodyMedium,
                               ),
                               const SizedBox(width: 12),
-                              Text('(${widget.item.year})', style: textTheme.bodyMedium),
+                              Text('(${widget.item.year})',
+                                  style: textTheme.bodyMedium),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -722,23 +914,28 @@ class _DetailsScreenState extends State<DetailsScreen> {
                               padding: const EdgeInsets.only(top: 4.0),
                               child: SizedBox(
                                 width: 16, height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: colorScheme.primary),
                               ),
                             )
-                          else if (_duration != null && _duration!.isNotEmpty)
-                            Row(
-                              children: [
-                                Icon(Icons.timer_outlined, color: colorScheme.onSurfaceVariant, size: 18),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    _duration!,
-                                    style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                                    overflow: TextOverflow.ellipsis,
+                          else
+                            if (_duration != null && _duration!.isNotEmpty)
+                              Row(
+                                children: [
+                                  Icon(Icons.timer_outlined,
+                                      color: colorScheme.onSurfaceVariant,
+                                      size: 18),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      _duration!,
+                                      style: textTheme.bodySmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
                           const SizedBox(height: 12),
                           SizedBox(
                             height: 32,
@@ -751,9 +948,13 @@ class _DetailsScreenState extends State<DetailsScreen> {
                                   padding: const EdgeInsets.only(right: 8.0),
                                   child: Chip(
                                     label: Text(genre),
-                                    labelStyle: textTheme.labelSmall?.copyWith(color: colorScheme.onSecondaryContainer),
-                                    backgroundColor: colorScheme.secondaryContainer.withOpacity(0.7),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    labelStyle: textTheme.labelSmall?.copyWith(
+                                        color: colorScheme
+                                            .onSecondaryContainer),
+                                    backgroundColor: colorScheme
+                                        .secondaryContainer.withOpacity(0.7),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
                                     visualDensity: VisualDensity.compact,
                                     side: BorderSide.none,
                                   ),
@@ -769,13 +970,12 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
                 const SizedBox(height: 24),
 
-                // Add to Library Button
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        colorScheme.tertiary.withOpacity(0.8), // Using tertiary color for this button
+                        colorScheme.tertiary.withOpacity(0.8),
                         colorScheme.tertiaryContainer.withOpacity(0.8),
                       ],
                       begin: Alignment.topLeft,
@@ -794,19 +994,27 @@ class _DetailsScreenState extends State<DetailsScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        _showLibraryStatusOptions(context, widget.item, libraryProvider, currentLibraryStatus);
+                        HapticFeedback.lightImpact();
+                        _showLibraryStatusOptions(context, widget.item,
+                            libraryProvider, currentLibraryStatus);
                       },
                       borderRadius: BorderRadius.circular(16),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 16.0, horizontal: 20.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.bookmark_add_rounded, color: colorScheme.onTertiary, size: 28), // Changed icon and color
+                            Icon(Icons.bookmark_add_rounded,
+                                color: colorScheme.onTertiary, size: 28),
                             const SizedBox(width: 12),
                             Text(
-                              currentLibraryStatus != LibraryStatus.none ? 'Update My Library' : 'Add to My Library',
-                              style: textTheme.titleMedium?.copyWith(color: colorScheme.onTertiary, fontWeight: FontWeight.bold),
+                              currentLibraryStatus != LibraryStatus.none
+                                  ? 'Update My Library'
+                                  : 'Add to My Library',
+                              style: textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onTertiary,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -816,78 +1024,99 @@ class _DetailsScreenState extends State<DetailsScreen> {
                 ),
                 const SizedBox(height: 16),
 
-
+                // Trailer Section
                 if (_isLoadingTrailer)
                   Center(
-                    child: SizedBox(
-                      width: 48, height: 48,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
                       child: CircularProgressIndicator(strokeWidth: 3, color: colorScheme.primary),
                     ),
                   )
+                else if (_hasTrailerError)
+                  ErrorDisplayWidget(
+                    message: 'Failed to load trailer. Please try again.',
+                    onRetry: _loadAllDetails,
+                    icon: Icons.videocam_off_rounded,
+                  )
                 else if (_trailerUrl != null && _trailerUrl!.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary.withOpacity(0.8),
-                          colorScheme.primaryContainer.withOpacity(0.8),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            colorScheme.primary.withOpacity(0.8),
+                            colorScheme.primaryContainer.withOpacity(0.8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => YoutubePlayerWidget(url: _trailerUrl!),
-                            ),
-                          );
-                        },
                         borderRadius: BorderRadius.circular(16),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.play_circle_fill_rounded, color: colorScheme.onPrimary, size: 28),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Watch Trailer',
-                                style: textTheme.titleMedium?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => YoutubePlayerWidget(url: _trailerUrl!),
                               ),
-                            ],
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.play_circle_fill_rounded, color: colorScheme.onPrimary, size: 28),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Watch Trailer',
+                                  style: textTheme.titleMedium?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                    )
+                  else
+                  // No trailer found - this should only show when _trailerUrl is null or empty
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                      child: Center(
+                        child: Text(
+                          'No trailer available.',
+                          style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     ),
-                  ),
+
 
                 const SizedBox(height: 24),
 
                 Text('Overview', style: textTheme.titleLarge),
                 const SizedBox(height: 8),
-                Text(widget.item.overview, style: textTheme.bodyMedium?.copyWith(height: 1.5)),
+                Text(widget.item.overview,
+                    style: textTheme.bodyMedium?.copyWith(height: 1.5)),
 
-                if (itemNote != null && itemNote.isNotEmpty) ...[ // Display the user's note if available
+                if (itemNote != null && itemNote.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text('Your Note', style: textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Card(
                     elevation: 0.5,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     color: colorScheme.surfaceContainer,
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
@@ -906,203 +1135,313 @@ class _DetailsScreenState extends State<DetailsScreen> {
 
                 Text('More Details', style: textTheme.titleLarge),
                 const SizedBox(height: 8),
-                _isLoadingDetails
-                    ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-                    : Card(
-                  elevation: 1.0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: colorScheme.surfaceContainerLow,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_originalLanguage != null && _originalLanguage!.isNotEmpty)
-                          _buildDetailRow(context, Icons.language_rounded, 'Original Language', _getLanguageName(_originalLanguage)),
-                        if (_originalTitle != null && _originalTitle!.isNotEmpty && widget.item.title != _originalTitle)
-                          _buildDetailRow(context, Icons.title_rounded, 'Original Title', _originalTitle),
-                        if (_status != null && _status!.isNotEmpty)
-                          _buildDetailRow(context, Icons.info_outline_rounded, 'Status', _status),
-                        if (widget.item.isMovie && _budget != null && _budget! > 0)
-                          _buildDetailRow(context, Icons.attach_money_rounded, 'Budget', _formatCurrency(_budget)),
-                        if (widget.item.isMovie && _revenue != null && _revenue! > 0)
-                          _buildDetailRow(context, Icons.trending_up_rounded, 'Revenue', _formatCurrency(_revenue)),
-                        if (_director != null && _director!.isNotEmpty)
-                          _buildDetailRow(context, Icons.movie_creation_rounded, 'Director', _director!),
-                        if (_writers.isNotEmpty)
-                          _buildDetailRow(context, Icons.edit_note_rounded, 'Writer(s)', _writers.join(', ')),
-                        if (!widget.item.isMovie && _creators.isNotEmpty)
-                          _buildDetailRow(context, Icons.person_add_alt_rounded, 'Creator(s)', _creators.join(', ')),
-                      ].expand((widget) => [widget, const SizedBox(height: 8)]).toList()..removeLast(),
+                if (_isLoadingDetails ||
+                    _isLoadingCrew) // This line is now fixed
+                  Center(child: CircularProgressIndicator(
+                      color: colorScheme.primary))
+                else
+                  if (_hasDetailsError || _hasCrewError)
+                    ErrorDisplayWidget(
+                      message: 'Failed to load more details. Please try again.',
+                      onRetry: _loadAllDetails,
+                      icon: Icons.info_outline_rounded,
+                    )
+                  else
+                    Card(
+                      elevation: 1.0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      color: colorScheme.surfaceContainerLow,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_originalLanguage != null &&
+                                _originalLanguage!.isNotEmpty)
+                              _buildDetailRow(context, Icons.language_rounded,
+                                  'Original Language',
+                                  _getLanguageName(_originalLanguage)),
+                            if (_originalTitle != null &&
+                                _originalTitle!.isNotEmpty &&
+                                widget.item.title != _originalTitle)
+                              _buildDetailRow(context, Icons.title_rounded,
+                                  'Original Title', _originalTitle),
+                            if (_status != null && _status!.isNotEmpty)
+                              _buildDetailRow(
+                                  context, Icons.info_outline_rounded, 'Status',
+                                  _status),
+                            if (widget.item.isMovie && _budget != null &&
+                                _budget! > 0)
+                              _buildDetailRow(
+                                  context, Icons.attach_money_rounded, 'Budget',
+                                  _formatCurrency(_budget)),
+                            if (widget.item.isMovie && _revenue != null &&
+                                _revenue! > 0)
+                              _buildDetailRow(
+                                  context, Icons.trending_up_rounded, 'Revenue',
+                                  _formatCurrency(_revenue)),
+                            if (_director != null && _director!.isNotEmpty)
+                              _buildDetailRow(
+                                  context, Icons.movie_creation_rounded,
+                                  'Director', _director!),
+                            if (_writers.isNotEmpty)
+                              _buildDetailRow(
+                                  context, Icons.edit_note_rounded, 'Writer(s)',
+                                  _writers.join(', ')),
+                            if (!widget.item.isMovie && _creators.isNotEmpty)
+                              _buildDetailRow(
+                                  context, Icons.person_add_alt_rounded,
+                                  'Creator(s)', _creators.join(', ')),
+                          ].expand((widget) =>
+                          [
+                            widget,
+                            const SizedBox(height: 8)
+                          ]).toList()
+                            ..removeLast(),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
                 const SizedBox(height: 24),
 
                 Text('Where to Watch', style: textTheme.titleLarge),
                 const SizedBox(height: 8),
-                _isLoadingProviders
-                    ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
-                    : (_watchProviders != null && _watchProviders!.isNotEmpty)
-                    ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_watchProviders!['flatrate'] != null)
-                      _buildProviderSection(context, 'Stream', _watchProviders!['flatrate'], colorScheme, textTheme),
-                    if (_watchProviders!['rent'] != null)
-                      _buildProviderSection(context, 'Rent', _watchProviders!['rent'], colorScheme, textTheme),
-                    if (_watchProviders!['buy'] != null)
-                      _buildProviderSection(context, 'Buy', _watchProviders!['buy'], colorScheme, textTheme),
-                    if (_watchProviders!['link'] != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: TextButton.icon(
-                          icon: Icon(Icons.open_in_new_rounded, color: colorScheme.primary),
-                          label: Text('View all options on TMDB', style: textTheme.bodyMedium?.copyWith(color: colorScheme.primary)),
-                          onPressed: () => _launchWatchProviderUrl(_watchProviders!['link']),
-                        ),
+                if (_isLoadingProviders)
+                  Center(child: CircularProgressIndicator(
+                      color: colorScheme.primary))
+                else
+                  if (_hasProvidersError)
+                    ErrorDisplayWidget(
+                      message: 'Failed to load watch providers. Please try again.',
+                      onRetry: _loadAllDetails,
+                      icon: Icons.tv_off_rounded,
+                    )
+                  else
+                    if (_watchProviders != null && _watchProviders!.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_watchProviders!['flatrate'] != null)
+                            _buildProviderSection(
+                                context, 'Stream', _watchProviders!['flatrate'],
+                                colorScheme, textTheme),
+                          if (_watchProviders!['rent'] != null)
+                            _buildProviderSection(
+                                context, 'Rent', _watchProviders!['rent'],
+                                colorScheme, textTheme),
+                          if (_watchProviders!['buy'] != null)
+                            _buildProviderSection(
+                                context, 'Buy', _watchProviders!['buy'],
+                                colorScheme, textTheme),
+                          if (_watchProviders!['link'] != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16.0),
+                              child: TextButton.icon(
+                                icon: Icon(Icons.open_in_new_rounded,
+                                    color: colorScheme.primary),
+                                label: Text('View all options on TMDB',
+                                    style: textTheme.bodyMedium?.copyWith(
+                                        color: colorScheme.primary)),
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  _launchUrl(_watchProviders!['link']);
+                                },
+                              ),
+                            )
+                        ],
                       )
-                  ],
-                )
-                    : Center(child: Text('No watch options found.', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant))),
+                    else
+                      Center(child: Text('No watch options found.',
+                          style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant))),
                 const SizedBox(height: 24),
 
                 Text('Cast', style: textTheme.titleLarge),
                 const SizedBox(height: 8),
-                _isLoadingCast
-                    ? _buildShimmerCastPlaceholder()
-                    : _cast.isEmpty
-                    ? Center(child: Text('No cast information available.', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)))
-                    : SizedBox(
-                  height: 150,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _cast.length,
-                    itemBuilder: (context, index) {
-                      final castMember = _cast[index];
-                      final actorHeroTag = 'actor_${castMember['id']}';
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ActorDetailsScreen(
-                                actorName: castMember['name'] ?? '',
-                                profileUrl: castMember['profileUrl'] ?? '',
-                                actorId: castMember['id'] ?? 0,
-                                heroTag: actorHeroTag,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 85,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            children: [
-                              Hero(
-                                tag: actorHeroTag,
-                                child: CircleAvatar(
-                                  radius: 40,
-                                  backgroundImage: CachedNetworkImageProvider(castMember['profileUrl'] ?? ''),
-                                  backgroundColor: colorScheme.surfaceVariant,
-                                  child: (castMember['profileUrl'] == null || (castMember['profileUrl'] as String).contains('placeholder'))
-                                      ? Icon(Icons.person, size: 40, color: colorScheme.onSurfaceVariant)
-                                      : null,
+                if (_isLoadingCast)
+                  _buildShimmerCastPlaceholder()
+                else
+                  if (_hasCastError)
+                    ErrorDisplayWidget(
+                      message: 'Failed to load cast. Please try again.',
+                      onRetry: _loadAllDetails,
+                      icon: Icons.group_off_rounded,
+                    )
+                  else
+                    if (_cast.isEmpty)
+                      Center(child: Text('No cast information available.',
+                          style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant)))
+                    else
+                      SizedBox(
+                        height: 150,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _cast.length,
+                          itemBuilder: (context, index) {
+                            final castMember = _cast[index];
+                            final actorHeroTag = 'actor_${castMember['id']}';
+                            return GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ActorDetailsScreen(
+                                          actorName: castMember['name'] ?? '',
+                                          profileUrl: castMember['profileUrl'] ??
+                                              '',
+                                          actorId: castMember['id'] ?? 0,
+                                          heroTag: actorHeroTag,
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 85,
+                                margin: const EdgeInsets.only(right: 12),
+                                child: Column(
+                                  children: [
+                                    Hero(
+                                      tag: actorHeroTag,
+                                      child: CircleAvatar(
+                                        radius: 40,
+                                        backgroundImage: CachedNetworkImageProvider(
+                                            castMember['profileUrl'] ?? ''),
+                                        backgroundColor: colorScheme
+                                            .surfaceVariant,
+                                        child: (castMember['profileUrl'] ==
+                                            null ||
+                                            (castMember['profileUrl'] as String)
+                                                .contains('placeholder'))
+                                            ? Icon(Icons.person, size: 40,
+                                            color: colorScheme.onSurfaceVariant)
+                                            : null,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      castMember['name'] ?? '',
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: textTheme.labelMedium?.copyWith(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      castMember['character'] ?? '',
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: textTheme.labelSmall?.copyWith(
+                                          color: colorScheme.onSurfaceVariant),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                castMember['name'] ?? '',
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                castMember['character'] ?? '',
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
 
                 const SizedBox(height: 24),
 
                 Text('Similar Content', style: textTheme.titleLarge),
                 const SizedBox(height: 8),
-                _isLoadingSimilar
-                    ? _buildShimmerPlaceholder()
-                    : _similarContent.isEmpty
-                    ? Center(child: Text('No similar content available.', style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)))
-                    : SizedBox(
-                  height: 220,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _similarContent.length,
-                    itemBuilder: (context, index) {
-                      final item = _similarContent[index];
-                      final similarHeroTag = 'similar_poster_${item.id}';
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DetailsScreen(item: item, heroTag: similarHeroTag),
-                            ),
-                          );
-                        },
-                        child: Card(
-                          elevation: 1.0,
-                          clipBehavior: Clip.antiAlias,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-                          margin: const EdgeInsets.only(right: 12),
-                          child: SizedBox(
-                            width: 120,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Hero(
-                                    tag: similarHeroTag,
-                                    child: CachedNetworkImage(
-                                      imageUrl: item.posterUrl,
-                                      fit: BoxFit.cover,
-                                      width: 120,
-                                      placeholder: (context, url) => Container(
-                                        color: colorScheme.surfaceVariant.withOpacity(0.5),
+                if (_isLoadingSimilar)
+                  _buildShimmerPlaceholder()
+                else
+                  if (_hasSimilarError)
+                    ErrorDisplayWidget(
+                      message: 'Failed to load similar content. Please try again.',
+                      onRetry: _loadAllDetails,
+                      icon: Icons
+                          .movie_outlined, // Changed from movie_filter_off_rounded
+                    )
+                  else
+                    if (_similarContent.isEmpty)
+                      Center(child: Text('No similar content available.',
+                          style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant)))
+                    else
+                      SizedBox(
+                        height: 220,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _similarContent.length,
+                          itemBuilder: (context, index) {
+                            final item = _similarContent[index];
+                            final similarHeroTag = 'similar_poster_${item.id}';
+                            return GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator
+                                    .pushReplacement( // Use pushReplacement to avoid deep navigation stack of similar items
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DetailsScreen(item: item,
+                                            heroTag: similarHeroTag),
+                                  ),
+                                );
+                              },
+                              child: Card(
+                                elevation: 1.0,
+                                clipBehavior: Clip.antiAlias,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12.0)),
+                                margin: const EdgeInsets.only(right: 12),
+                                child: SizedBox(
+                                  width: 120,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment
+                                        .start,
+                                    children: [
+                                      Expanded(
+                                        child: Hero(
+                                          tag: similarHeroTag,
+                                          child: CachedNetworkImage(
+                                            imageUrl: item.posterUrl,
+                                            fit: BoxFit.cover,
+                                            width: 120,
+                                            placeholder: (context, url) =>
+                                                Container(
+                                                  color: colorScheme
+                                                      .surfaceVariant
+                                                      .withOpacity(0.5),
+                                                ),
+                                            errorWidget: (context, url,
+                                                error) =>
+                                                Container(
+                                                  color: colorScheme
+                                                      .surfaceVariant
+                                                      .withOpacity(0.5),
+                                                  child: Icon(Icons
+                                                      .movie_creation_outlined,
+                                                      color: colorScheme
+                                                          .onSurfaceVariant),
+                                                ),
+                                          ),
+                                        ),
                                       ),
-                                      errorWidget: (context, url, error) => Container(
-                                        color: colorScheme.surfaceVariant.withOpacity(0.5),
-                                        child: Icon(Icons.movie_creation_outlined, color: colorScheme.onSurfaceVariant),
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(
+                                          item.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: textTheme.bodySmall,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    item.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: textTheme.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
                 const SizedBox(height: 20),
               ]),
             ),
@@ -1112,10 +1451,16 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String? value) {
-    if (value == null || value.isEmpty || value == 'N/A') return const SizedBox.shrink(); // Hide if no value
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label,
+      String? value) {
+    if (value == null || value.isEmpty || value == 'N/A')
+      return const SizedBox.shrink();
+    final colorScheme = Theme
+        .of(context)
+        .colorScheme;
+    final textTheme = Theme
+        .of(context)
+        .textTheme;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1125,8 +1470,10 @@ class _DetailsScreenState extends State<DetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: textTheme.labelMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
-              Text(value, style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface)),
+              Text(label, style: textTheme.labelMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant)),
+              Text(value, style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface)),
             ],
           ),
         ),
@@ -1134,15 +1481,23 @@ class _DetailsScreenState extends State<DetailsScreen> {
     );
   }
 
-  Widget _buildProviderSection(BuildContext context, String title, List<dynamic> providers, ColorScheme colorScheme, TextTheme textTheme) {
-    final String? sectionLink = _watchProviders?['link'];
+  Widget _buildProviderSection(BuildContext context, String title,
+      List<dynamic> providers, ColorScheme colorScheme, TextTheme textTheme) {
+    // Attempt to get the US link specifically, or fallback to the first available link
+    String? sectionLink;
+    if (_watchProviders?['US']?['link'] != null) {
+      sectionLink = _watchProviders!['US']['link'];
+    } else if (_watchProviders?['link'] != null) {
+      sectionLink = _watchProviders!['link'];
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(title, style: textTheme.titleSmall?.copyWith(color: colorScheme.onSurface)),
+          child: Text(title, style: textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface)),
         ),
         SizedBox(
           height: 60,
@@ -1157,11 +1512,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
               if (logoPath == null) return const SizedBox.shrink();
 
               return GestureDetector(
-                onTap: sectionLink != null ? () => _launchWatchProviderUrl(sectionLink) : null,
+                onTap: sectionLink != null ? () {
+                  HapticFeedback.lightImpact();
+                  _launchUrl(sectionLink!); // Add ! to assert non-null
+                } : null,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 12.0),
                   child: Tooltip(
-                    message: providerName,
+                    message: providerName ?? '', // Handle potential null
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8.0),
                       child: CachedNetworkImage(
@@ -1169,11 +1527,14 @@ class _DetailsScreenState extends State<DetailsScreen> {
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(color: colorScheme.surfaceVariant),
-                        errorWidget: (context, url, error) => Container(
-                          color: colorScheme.surfaceVariant,
-                          child: Icon(Icons.broken_image, color: colorScheme.onSurfaceVariant),
-                        ),
+                        placeholder: (context, url) =>
+                            Container(color: colorScheme.surfaceVariant),
+                        errorWidget: (context, url, error) =>
+                            Container(
+                              color: colorScheme.surfaceVariant,
+                              child: Icon(Icons.broken_image,
+                                  color: colorScheme.onSurfaceVariant),
+                            ),
                       ),
                     ),
                   ),
