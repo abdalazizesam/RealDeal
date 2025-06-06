@@ -1,19 +1,19 @@
-// lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart'; // Import for HapticFeedback
-import 'package:file_picker/file_picker.dart'; // For file picking
-import 'package:path_provider/path_provider.dart'; // For getting directory paths
-import 'package:permission_handler/permission_handler.dart'; // For permissions
-import 'dart:io'; // For File operations
-import 'dart:convert'; // For JSON encoding/decoding
-
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import '../providers/theme_provider.dart';
-import '../providers/library_provider.dart'; // Import LibraryProvider
+import '../providers/library_provider.dart';
 import '../models/app_theme_preset.dart';
-import '../models/media_item.dart'; // Import MediaItem and LibraryStatus
+import '../models/media_item.dart';
 import 'settings/update_genre_preferences_screen.dart';
 import 'settings/update_media_preferences_screen.dart';
 
@@ -162,72 +162,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     message: palette.name,
                     preferBelow: false,
                     child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        themeProvider.selectColorPalette(palette.id);
-                      },
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
-                            width: isSelected ? 3 : 1.5,
-                          ),
-                          boxShadow: isSelected ? [
-                            BoxShadow(
-                              color: swatch1.withOpacity(0.4),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            )
-                          ] : [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 2,
-                              offset: const Offset(1,1),
-                            )
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Row(
-                                  children: [
-                                    Expanded(child: Container(color: swatch1)),
-                                    Expanded(child: Container(color: swatch2)),
-                                  ],
-                                ),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          themeProvider.selectColorPalette(palette.id);
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
+                                width: isSelected ? 3 : 1.5,
                               ),
-                              if (isSelected)
-                                Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: swatch1.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(Icons.check_circle, color: checkColor, size: 24),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: 60,
-                    child: Text(
-                      labelText,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                    ),
-                  ),
+                            boxShadow: isSelected ? [
+                          BoxShadow(
+                          color: swatch1.withOpacity(0.4),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        )
+                        ] : [
+                    BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 2,
+                    offset: const Offset(1,1),
+                  )
                 ],
+              ),
+              child: ClipOval(
+              child: Stack(
+              children: [
+              Positioned.fill(
+              child: Row(
+              children: [
+              Expanded(child: Container(color: swatch1)),
+              Expanded(child: Container(color: swatch2)),
+              ],
+              ),
+              ),
+              if (isSelected)
+              Center(
+              child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+              color: swatch1.withOpacity(0.5),
+              shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check_circle, color: checkColor, size: 24),
+              ),
+              ),
+              ],
+              ),
+              ),
+              ),
+              ),
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+              width: 60,
+              child: Text(
+              labelText,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.labelSmall?.copyWith(color: colorScheme.onSurfaceVariant),
+              ),
+              ),
+              ],
               );
             }).toList(),
           ),
@@ -245,86 +245,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // _exportLibrary: Uses FilePicker.platform.saveFile for robust export.
+  // Updated: Changed success message for better user clarity.
   Future<void> _exportLibrary(BuildContext context) async {
     HapticFeedback.lightImpact();
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
     final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     try {
-      // 1. Request permissions (especially for Android)
-      var status = await Permission.storage.request();
-      if (status.isDenied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Storage permission denied. Cannot export library.', style: TextStyle(color: colorScheme.onErrorContainer)),
-              backgroundColor: colorScheme.errorContainer,
-            ),
-          );
-        }
-        return;
-      }
-      if (status.isPermanentlyDenied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Storage permission permanently denied. Please enable it in app settings.', style: TextStyle(color: colorScheme.onErrorContainer)),
-              action: SnackBarAction(label: 'Settings', onPressed: openAppSettings, textColor: colorScheme.onErrorContainer),
-              backgroundColor: colorScheme.errorContainer,
-            ),
-          );
-        }
-        return;
-      }
-
-      // 2. Prepare data
       final List<Map<String, dynamic>> libraryData =
       libraryProvider.libraryItems.map((item) => item.toJson()).toList();
       final String jsonString = json.encode(libraryData);
 
-      // 3. Get a directory for saving
-      final directory = await getDownloadsDirectory(); // Or getApplicationDocumentsDirectory()
-      if (directory == null) {
+      final fileName = 'reeldeallibrary_${DateTime.now().toIso8601String().split('.')[0].replaceAll(':', '-')}.json';
+
+      // Use FilePicker.platform.saveFile for saving. This handles permissions and directory selection for modern Android.
+      // It will open a system dialog for the user to choose the save location.
+      String? outputFile = await FilePicker.platform.saveFile(
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: utf8.encode(jsonString), // Pass content as bytes to be saved
+      );
+
+      if (outputFile == null) {
+        // User cancelled the picker
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Could not access downloads directory to save file.', style: TextStyle(color: colorScheme.onErrorContainer)),
-              backgroundColor: colorScheme.errorContainer,
+              content: Text('Library export cancelled.', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+              backgroundColor: colorScheme.surfaceVariant,
             ),
           );
         }
         return;
       }
 
-      final fileName = 'reeldeallibrary_${DateTime.now().toIso8601String().split('.')[0].replaceAll(':', '-')}.json';
-      final file = File('${directory.path}/$fileName');
-
-      // 4. Write the file
-      await file.writeAsString(jsonString);
-
+      // Updated success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Library exported to: ${file.path}', style: TextStyle(color: colorScheme.onSecondaryContainer)),
+            content: Text('Library exported successfully to the chosen location!',
+                style: TextStyle(color: colorScheme.onSecondaryContainer)),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             backgroundColor: colorScheme.secondaryContainer,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: 'Open', onPressed: () async {
-              // This is a simple open attempt, might need platform-specific solution for actual "open" file
-              // For demonstration, we just acknowledge.
-              // A proper file opener might require a third-party package or native code.
-            }, textColor: colorScheme.onSecondaryContainer),
+            duration: const Duration(seconds: 4), // Shortened duration as path is not directly shown
           ),
         );
       }
     } catch (e) {
-      print('Error exporting library: $e');
+      print('Error exporting library: $e'); // Log the actual error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to export library: $e', style: TextStyle(color: colorScheme.onErrorContainer)),
+            content: Text('Failed to export library: ${e.toString().contains("PlatformException") ? "Operation cancelled or denied." : e.toString()}', // More user-friendly error message
+                style: TextStyle(color: colorScheme.onErrorContainer)),
             backgroundColor: colorScheme.errorContainer,
           ),
         );
@@ -332,6 +308,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // MODIFIED: _importLibrary to explicitly request MANAGE_EXTERNAL_STORAGE for Android 11+
+  // WARNING: This permission is highly restricted by Google Play Store policies.
   Future<void> _importLibrary(BuildContext context) async {
     HapticFeedback.lightImpact();
     final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
@@ -339,7 +317,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     try {
-      // 1. Pick file
+      // Check Android platform and API level to request appropriate permissions
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin(); // Instantiate DeviceInfoPlugin
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        final int sdkInt = androidInfo.version.sdkInt;
+
+        if (sdkInt >= 30) { // Android 11 (API 30) and above
+          final status = await Permission.manageExternalStorage.request();
+          print('MANAGE_EXTERNAL_STORAGE status: $status'); // Log the status
+
+          if (status.isDenied) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('All Files Access permission denied. Cannot import library.',
+                      style: TextStyle(color: colorScheme.onErrorContainer)),
+                  backgroundColor: colorScheme.errorContainer,
+                ),
+              );
+            }
+            return;
+          }
+          if (status.isPermanentlyDenied) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('All Files Access permission permanently denied. Please enable it in app settings manually.',
+                      style: TextStyle(color: colorScheme.onErrorContainer)),
+                  action: SnackBarAction(label: 'Settings', onPressed: openAppSettings, textColor: colorScheme.onErrorContainer),
+                  backgroundColor: colorScheme.errorContainer,
+                ),
+              );
+            }
+            return;
+          }
+        } else {
+          // For Android versions below 11 (API < 30)
+          final status = await Permission.storage.request();
+          print('Standard Storage permission status: $status'); // Log the status
+          if (status.isDenied) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Storage permission denied by user. Please grant permission to import library.',
+                      style: TextStyle(color: colorScheme.onErrorContainer)),
+                  backgroundColor: colorScheme.errorContainer,
+                ),
+              );
+            }
+            return;
+          }
+          if (status.isPermanentlyDenied) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Storage permission permanently denied. Please enable it in app settings manually.',
+                      style: TextStyle(color: colorScheme.onErrorContainer)),
+                  action: SnackBarAction(label: 'Settings', onPressed: openAppSettings, textColor: colorScheme.onErrorContainer),
+                  backgroundColor: colorScheme.errorContainer,
+                ),
+              );
+            }
+            return;
+          }
+        }
+      } // End of Android platform check
+
+      // If permissions are granted (or not needed for the OS), proceed to pick file
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
@@ -446,11 +491,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      print('Error importing library: $e');
+      print('Error importing library: $e'); // Log the actual error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to import library: $e', style: TextStyle(color: colorScheme.onErrorContainer)),
+            content: Text('Failed to import library: ${e.toString()}', style: TextStyle(color: colorScheme.onErrorContainer)),
             backgroundColor: colorScheme.errorContainer,
           ),
         );
