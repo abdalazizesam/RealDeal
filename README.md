@@ -11,15 +11,15 @@ ReelDeal is a modern Flutter application designed to simplify your entertainment
 ## 📱 App Showcase
 
 <div align="center">
-  <img src="assets/screenshots/reeldealscreenshots%20(1).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(2).png" /> 
-  <img src="assets/screenshots/reeldealscreenshots%20(3).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(4).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(5).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(6).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(7).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(8).png" />
-  <img src="assets/screenshots/reeldealscreenshots%20(9).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(1).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(2).png" width="25%"/> 
+  <img src="assets/screenshots/reeldealscreenshots%20(3).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(4).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(5).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(6).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(7).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(8).png" width="25%"/>
+  <img src="assets/screenshots/reeldealscreenshots%20(9).png"  width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(10).png" width="25%" />
 </div>
 *Note: The images above are for illustrative purposes. Your app's appearance may vary based on your selected theme and content.*
