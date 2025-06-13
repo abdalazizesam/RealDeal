@@ -69,7 +69,6 @@ ReelDeal is a modern Flutter application designed to simplify your entertainment
 * **File Picker:** Allows users to pick files from their device for import/export.
 * **Path Provider:** Provides access to file system locations.
 * **Permission Handler:** Manages runtime permissions (e.g., storage access for import/export).
-* **Lottie:** Displays engaging animations for empty states or loading.
 * **Flutter Animate:** Provides declarative animations for UI elements.
 * **Intl:** Internationalization and localization utilities, particularly for date/number formatting.
 * **Device Info Plus:** Provides device-specific information (e.g., Android SDK version for permissions).
@@ -78,7 +77,7 @@ ReelDeal is a modern Flutter application designed to simplify your entertainment
 ## 📲 Download
 
 <div align="center">
-  <a href="https://github.com/abdalazizesam/RealDeal/releases/download/v1.4.0/ReelDealv1.4.0.apk">
+  <a href="https://github.com/abdalazizesam/RealDeal/releases/download/v2.0.0/ReelDealv2.0.0.apk">
     <img src="https://i.ibb.co/zVQDK09g/apk.png" alt="Download APK" />
   </a>
 </div>
