@@ -7,7 +7,6 @@ class ThemeProvider with ChangeNotifier {
   static const String _selectedThemeModeKey = 'selected_theme_mode';
   static const String _isOledBlackKey = 'is_oled_black';
 
-  // Removed: static const String _selectedLocaleKey = 'selected_locale';
 
   static final List<AppColorPalette> availableColorPalettes = [
     AppColorPalette(
@@ -105,7 +104,6 @@ class ThemeProvider with ChangeNotifier {
   AppThemeMode _selectedThemeMode = AppThemeMode.system;
   bool _isOledBlack = false;
 
-  // Removed: Locale? _selectedLocale;
 
   SharedPreferences? _prefs;
 
@@ -119,7 +117,6 @@ class ThemeProvider with ChangeNotifier {
 
   bool get isOledBlack => _isOledBlack;
 
-  // Removed: Locale? get selectedLocale => _selectedLocale;
 
   Brightness get effectiveBrightness {
     if (_selectedThemeMode == AppThemeMode.system) {
@@ -179,12 +176,6 @@ class ThemeProvider with ChangeNotifier {
 
     _isOledBlack = oledBlack ?? false;
 
-    // Removed:
-    // if (localeCode != null && localeCode.isNotEmpty) {
-    //   _selectedLocale = Locale(localeCode);
-    // } else {
-    //   _selectedLocale = null;
-    // }
 
     notifyListeners();
   }

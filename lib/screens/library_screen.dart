@@ -1,4 +1,3 @@
-// lib/screens/library_screen.dart
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +9,7 @@ import '../models/media_item.dart';
 import '../providers/library_provider.dart';
 import 'details_screen.dart';
 import '../services/tmdb_service.dart';
-import '../widgets/error_display_widget.dart'; // Assuming you created this from home_screen updates
+import '../widgets/error_display_widget.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({Key? key}) : super(key: key);

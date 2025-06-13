@@ -39,19 +39,11 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
       setState(() {
         _isLoading = false;
       });
-      // You would typically start the showcase here after the UI is built
-      // WidgetsBinding.instance.addPostFrameCallback((_) => _startShowcase());
+
     }
   }
 
-  // Conceptual method to start showcase (requires a showcase package)
-  // void _startShowcase() {
-  //   ShowCaseWidget.of(context).startShowCase([
-  //     _movieGenreHintKey,
-  //     _tvGenreHintKey,
-  //     _nextButtonHintKey,
-  //   ]);
-  // }
+
 
   Future<void> _saveAndProceed() async {
     HapticFeedback.lightImpact(); // Haptic Feedback
@@ -92,12 +84,6 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             ),
             const SizedBox(height: 24),
 
-            // Movie Genres Section
-            // Wrap with a conceptual Showcase widget for hinting
-            // Showcase(
-            //   key: _movieGenreHintKey,
-            //   description: 'Tap on genres you like to select them for movies.',
-            //   child:
             Text(
               'Movie Genres',
               style: textTheme.titleMedium,
@@ -141,12 +127,7 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             ),
             const SizedBox(height: 32), // Increased spacing between sections
 
-            // TV Show Genres Section
-            // Wrap with a conceptual Showcase widget for hinting
-            // Showcase(
-            //   key: _tvGenreHintKey,
-            //   description: 'Do the same for TV show genres.',
-            //   child:
+
             Text(
               'TV Show Genres',
               style: textTheme.titleMedium,
@@ -190,11 +171,7 @@ class _OnboardingGenreSelectionScreenState extends State<OnboardingGenreSelectio
             ),
             const SizedBox(height: 40), // Increased spacing before button
             Center(
-              // Wrap with a conceptual Showcase widget for hinting
-              // Showcase(
-              //   key: _nextButtonHintKey,
-              //   description: 'Once you\'re done, tap here to continue!',
-              //   child:
+
               child: FilledButton(
                 onPressed: (_selectedMovieGenreIds.isNotEmpty || _selectedTvGenreIds.isNotEmpty)
                     ? _saveAndProceed

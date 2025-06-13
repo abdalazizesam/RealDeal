@@ -21,7 +21,6 @@ class MediaItem {
   final bool isMovie;
   final String? character;
 
-  // New fields for My Library feature
   LibraryStatus libraryStatus;
   int? currentProgress; // For tracking episodes (TV) or movie completion (0 or 1 for movies)
   double? userRating; // User's rating for completed items (0.0 to 10.0)

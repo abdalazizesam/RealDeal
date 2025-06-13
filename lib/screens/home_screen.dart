@@ -1,4 +1,3 @@
-// lib/screens/home_screen.dart
 import 'dart:async';
 import 'dart:math' show Random, min;
 import 'package:flutter/material.dart';
@@ -15,7 +14,7 @@ import 'settings_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/library_provider.dart';
 import 'package:flutter/services.dart';
-import '../widgets/error_display_widget.dart'; // Import the new widget
+import '../widgets/error_display_widget.dart';
 
 // New: Enum for media types to simplify category handling
 enum MediaType { movie, tv }

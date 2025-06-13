@@ -4,10 +4,10 @@ import 'dart:ui';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:intl/intl.dart';
 import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
-import '../widgets/error_display_widget.dart'; // Import the new error widget
+import '../widgets/error_display_widget.dart';
 import 'details_screen.dart';
 import 'dart:ui' as ui;
 

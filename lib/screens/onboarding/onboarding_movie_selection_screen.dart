@@ -1,13 +1,12 @@
-// lib/screens/onboarding/onboarding_movie_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/media_item.dart';
 import '../../services/tmdb_service.dart';
-import '../../main.dart'; // Assuming your main app is now 'MyApp' for Navigator.pushAndRemoveUntil
+import '../../main.dart';
 import 'package:provider/provider.dart';
 import '../../providers/library_provider.dart';
-import 'package:flutter/services.dart'; // Import for HapticFeedback
+import 'package:flutter/services.dart';
 
 class OnboardingMovieSelectionScreen extends StatefulWidget {
   const OnboardingMovieSelectionScreen({Key? key}) : super(key: key);

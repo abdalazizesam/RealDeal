@@ -1,4 +1,3 @@
-// lib/screens/details_screen.dart
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -11,7 +10,7 @@ import '../models/media_item.dart';
 import '../providers/library_provider.dart';
 import '../services/tmdb_service.dart';
 import '../widgets/youtube_player_widget.dart';
-import '../widgets/error_display_widget.dart'; // Import the new error widget
+import '../widgets/error_display_widget.dart';
 import 'actor_details_screen.dart';
 
 
