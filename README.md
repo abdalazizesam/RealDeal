@@ -17,7 +17,6 @@ ReelDeal is a modern Flutter application designed to simplify your entertainment
   <img src="assets/screenshots/reeldealscreenshots%20(4).png" width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(5).png" width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(6).png" width="25%"/>
-  <img src="assets/screenshots/reeldealscreenshots%20(7).png" width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(8).png" width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(9).png"  width="25%"/>
   <img src="assets/screenshots/reeldealscreenshots%20(10).png" width="25%" />
