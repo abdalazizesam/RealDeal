@@ -1,38 +1,79 @@
-# 🎬 ReelDeal 
-> *Your next binge-watch is just a mood away*
+# 🎬 ReelDeal
 
-![ReelDeal Banner](https://i.ibb.co/5h0gP4ZC/reeldeal-banner.png)
+> *Your personalized guide to movies and TV shows, tailored to your tastes and mood!*
+
+![ReelDeal Banner](assets/reeldeal%20banner.png)
 
 ## ✨ What is ReelDeal?
 
-ReelDeal is a Flutter app that solves the eternal question: "What should I watch tonight?" Whether you're feeling happy, thrilled, chill, or sad, ReelDeal finds the perfect movie or TV show matches for your current mood and genre preferences.
+ReelDeal is a modern Flutter application designed to simplify your entertainment choices. Gone are the days of endless scrolling! This app helps you discover your next favorite movie or TV show by combining your mood, genre preferences, and even learns from your viewing history to provide truly personalized recommendations. It's not just a discovery tool; it's a comprehensive library manager for all your cinematic and episodic adventures.
 
 ## 📱 App Showcase
 
 <div align="center">
-  <img src="https://i.ibb.co/PzGnT01K/Mu-Mu12-20250505-111559.png" width="25%" />
-  <img src="https://i.ibb.co/VYjpH00T/Mu-Mu12-20250505-111621.png" width="25%" /> 
-  <img src="https://i.ibb.co/gZ1MwPDV/Mu-Mu12-20250505-111627.png" width="25%" />
-  <img src="https://i.ibb.co/4ZKTGLh0/Mu-Mu12-20250505-111701.png" width="25%" />
-  <img src="https://i.ibb.co/vxPXqx2W/Mu-Mu12-20250505-111711.png" width="25%" />
-  <img src="https://i.ibb.co/84c1QJDX/Mu-Mu12-20250505-111726.png" width="25%" />
+  <img src="assets/screenshots/reeldealscreenshots%20(1).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(2).png" /> 
+  <img src="assets/screenshots/reeldealscreenshots%20(3).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(4).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(5).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(6).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(7).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(8).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(9).png" />
+  <img src="assets/screenshots/reeldealscreenshots%20(10).png" width="25%" />
 </div>
+*Note: The images above are for illustrative purposes. Your app's appearance may vary based on your selected theme and content.*
 
 ## 🚀 Key Features
 
-- **Mood Matcher** - Tell us how you're feeling, we'll handle the rest
-- **Genre Filter** - Fine-tune recommendations to match exactly what you want
-- **Trending Now** - Stay updated with what's hot in movies and TV
-- **Smart Watchlist** - Save favorites to watch later
-- **Rich Details** - Cast info, ratings, and everything you need to decide
+* **Personalized Discovery Engine:**
+   * **Mood Matcher:** Find content that perfectly aligns with your current mood (Happy, Thrilled, Chill, Sad).
+   * **Genre Filtering:** Refine your search with specific movie or TV show genres.
+   * **"Because You Liked..." Recommendations:** Get suggestions based on the movies and TV shows you've highly rated in your library.
+   * **Random Picks:** Can't decide? Let ReelDeal pick a random movie or TV show for you!
+
+* **Comprehensive Library Management:**
+   * **Status Tracking:** Organize your media with statuses like "Watching," "Want to Watch," "Completed," "On Hold," and "Dropped".
+   * **Progress & Ratings:** Keep track of your progress on TV shows (episode by episode) or movies, and rate completed items. Add personal notes to your entries.
+   * **Import/Export Library:** Easily back up and restore your entire library data.
+
+* **In-Depth Media Information:**
+   * Access rich details including overviews, release years, TMDB ratings, and durations.
+   * **Watch Trailers:** Directly watch trailers for movies and TV shows (YouTube integration).
+   * **Cast & Crew:** Explore detailed cast lists, character names, and key crew members (director, writers, creators).
+   * **Actor Profiles:** Dive into actor biographies, filmographies, and "known for" roles with sorting options.
+   * **Where to Watch:** Find out where content is available to stream, rent, or buy.
+
+* **Stunning UI & Customization:**
+   * Beautiful, modern Material 3 design crafted with Flutter.
+   * **Dynamic Theming:** Choose from multiple vibrant color palettes.
+   * **Light/Dark/System Themes:** Seamlessly switch between themes or follow your system settings.
+   * **OLED Black Mode:** Optimized dark theme for OLED screens for deeper blacks and battery saving.
+   * **Haptic Feedback:** Enjoy subtle tactile feedback for a more engaging user experience.
+
+* **Seamless Experience:**
+   * **Offline Handling:** Gracefully handles no internet connection, allowing access to cached data.
+   * **Cached Images:** Fast and smooth image loading for posters and backdrops.
 
 ## 💻 Tech Stack
 
-- **Flutter & Dart** - Beautiful cross-platform UI
-- **TMDB API** - Fresh movie & TV data
-- **Provider** - Clean state management
-- **SharedPreferences** - Local watchlist storage
-- **CachedNetworkImage** - Smooth image loading
+* **Flutter & Dart:** For building a beautiful, natively compiled cross-platform application.
+* **TMDB API:** The Movie Database API for comprehensive movie and TV show data.
+* **Provider:** A robust solution for state management within the app.
+* **Shared Preferences:** Lightweight data storage for user preferences and library data.
+* **CachedNetworkImage:** Efficiently loads and caches images from the network.
+* **Connectivity Plus:** Checks and monitors network connectivity.
+* **Shimmer:** Provides elegant shimmering loading effects for content.
+* **URL Launcher:** For opening external links like watch provider websites and trailers.
+* **Package Info Plus:** Retrieves application package information (e.g., version).
+* **File Picker:** Allows users to pick files from their device for import/export.
+* **Path Provider:** Provides access to file system locations.
+* **Permission Handler:** Manages runtime permissions (e.g., storage access for import/export).
+* **Lottie:** Displays engaging animations for empty states or loading.
+* **Flutter Animate:** Provides declarative animations for UI elements.
+* **Intl:** Internationalization and localization utilities, particularly for date/number formatting.
+* **Device Info Plus:** Provides device-specific information (e.g., Android SDK version for permissions).
+* **http:** A simple, future-based HTTP client for making API requests.
 
 ## 📲 Download
 
@@ -44,35 +85,43 @@ ReelDeal is a Flutter app that solves the eternal question: "What should I watch
 
 ## 🏁 Quick Start
 
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/abdalazizesam/RealDeal.git
-   cd RealDeal
-   flutter pub get
-   ```
+To get ReelDeal up and running on your local machine:
 
-2. **Add Your TMDB API Key**
-   ```dart
-   // In lib/services/tmdb_service.dart
-   final String apiKey = 'YOUR_API_KEY';
-   ```
+1.  **Clone the Repository:**
+    ```bash
+    git clone [https://github.com/abdalazizesam/RealDeal.git](https://github.com/abdalazizesam/RealDeal.git)
+    cd ReelDeal
+    ```
 
-3. **Run**
-   ```bash
-   flutter run
-   ```
+2.  **Install Dependencies:**
+    ```bash
+    flutter pub get
+    ```
 
-## 🔮 New Features Coming Soon
+3.  **Add Your TMDB API Key:**
+   * Register for a free API key at [TMDB Developer](https://www.themoviedb.org/documentation/api).
+   * Open `lib/services/tmdb_service.dart`.
+   * Replace `'c77efa315e4a87ebcd95b283b83e7aad'` with your actual API key:
+       ```dart
+       final String apiKey = 'YOUR_API_KEY'; // Replace with your TMDB API Key
+       ```
 
-
+4.  **Run the App:**
+    ```bash
+    flutter run
+    ```
+    *(Ensure you have a device or emulator connected.)*
 
 ## 💖 Love ReelDeal?
 
-Star the repo, share with friends, and contribute! Pull requests welcome.
+If you enjoy using ReelDeal or find it helpful, please consider:
+* Giving a ⭐ star to the repository!
+* Sharing it with your friends and fellow movie/TV enthusiasts.
+* Contributing to the project! All pull requests and suggestions are welcome.
 
 ---
 
 <div align="center">
-  <p>Created with Flutter, powered by TMDB, inspired by indecision</p>
+  <p>Created with Flutter, powered by TMDB, inspired by making entertainment easy</p>
   <p>© 2025 ReelDeal</p>
 </div>

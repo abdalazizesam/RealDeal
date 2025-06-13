@@ -184,7 +184,8 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   Widget _buildLibraryTab(List<MediaItem> items) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    // Moved LibraryProvider access to the Consumer outside _buildLibraryTab
+    // final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
 
     final filteredItems = items.where((item) => item.isMovie == _showMovies).toList();
 
@@ -208,6 +209,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
       itemBuilder: (context, index) {
         final item = filteredItems[index];
         final heroTag = 'library_poster_${item.id}_${item.isMovie}';
+        final libraryProvider = Provider.of<LibraryProvider>(context, listen: false); // Access provider here for actions
 
         List<Widget> trailingActions = [];
 
@@ -222,14 +224,15 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                   HapticFeedback.lightImpact(); // Haptic feedback on decrement
                   int? totalEpisodes;
                   if (!item.isMovie) {
-                    totalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
+                    // Try to use item.totalEpisodes first, if not available, fetch
+                    totalEpisodes = item.totalEpisodes ?? await _tmdbService.getTvShowTotalEpisodes(item.id);
                   } else {
                     totalEpisodes = 1;
                   }
                   if (totalEpisodes == null || totalEpisodes <= 0) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not determine total episodes/movie length to decrement progress. Please check internet and refresh the item details.')),
+                        const SnackBar(content: Text('Could not determine total episodes/movie length to decrement progress. Please check internet and refresh the item details.')),
                       );
                     }
                     return;
@@ -254,7 +257,8 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 HapticFeedback.lightImpact(); // Haptic feedback on increment
                 int? totalEpisodes;
                 if (!item.isMovie) {
-                  totalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
+                  // Try to use item.totalEpisodes first, if not available, fetch
+                  totalEpisodes = item.totalEpisodes ?? await _tmdbService.getTvShowTotalEpisodes(item.id);
                 } else {
                   totalEpisodes = 1;
                 }
@@ -262,7 +266,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 if (totalEpisodes == null || totalEpisodes <= 0) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not determine total episodes/movie length to update progress. Please check internet and refresh the item details.')),
+                      const SnackBar(content: Text('Could not determine total episodes/movie length to update progress. Please check internet and refresh the item details.')),
                     );
                   }
                   return;
@@ -344,20 +348,23 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 tag: heroTag,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: CachedNetworkImage(
-                    imageUrl: item.posterUrl,
-                    width: 60,
-                    height: 90,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      width: 60, height: 90,
-                      color: colorScheme.surfaceVariant.withOpacity(0.5),
-                      child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary)),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      width: 60, height: 90,
-                      color: colorScheme.surfaceVariant.withOpacity(0.5),
-                      child: Icon(Icons.broken_image_outlined, color: colorScheme.onSurfaceVariant, size: 30),
+                  child: Transform.scale(
+                    scale: 1.3,
+                    child: CachedNetworkImage(
+                      imageUrl: item.posterUrl,
+                      width: 60,
+                      height: 90,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Container(
+                        width: 60, height: 90,
+                        color: colorScheme.surfaceVariant.withOpacity(0.5),
+                        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary)),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: 60, height: 90,
+                        color: colorScheme.surfaceVariant.withOpacity(0.5),
+                        child: Icon(Icons.broken_image_outlined, color: colorScheme.onSurfaceVariant, size: 30),
+                      ),
                     ),
                   ),
                 ),
@@ -396,29 +403,13 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                       ],
                     )
                   else if (item.libraryStatus == LibraryStatus.watching)
-                    FutureBuilder<int?>(
-                      future: item.isMovie
-                          ? Future.value(1)
-                          : _tmdbService.getTvShowTotalEpisodes(item.id),
-                      builder: (context, snapshot) {
-                        String progressText = "Not Started";
-                        if (item.isMovie) {
-                          progressText = "${item.currentProgress ?? 0}/1";
-                        } else { // It's a TV show
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            progressText = "Loading progress...";
-                          } else if (snapshot.hasError) {
-                            progressText = "Error loading total episodes";
-                          } else {
-                            final int? totalEpisodes = snapshot.data;
-                            progressText = "${item.currentProgress ?? 0}/${totalEpisodes ?? '?'}";
-                          }
-                        }
-                        return Text(
-                          progressText,
-                          style: textTheme.bodySmall?.copyWith(color: colorScheme.primary),
-                        );
-                      },
+                  // Directly use item.totalEpisodes if available, otherwise fallback to fetching
+                  // It's recommended to populate item.totalEpisodes when the item is added to the library
+                    Text(
+                      item.isMovie
+                          ? '${item.currentProgress ?? 0}/1'
+                          : '${item.currentProgress ?? 0}/${item.totalEpisodes ?? '?'}', // Using '?' if totalEpisodes is null
+                      style: textTheme.bodySmall?.copyWith(color: colorScheme.primary),
                     )
                   else if (item.libraryStatus == LibraryStatus.onHold)
                       Text('On Hold', style: textTheme.bodySmall?.copyWith(color: Colors.orange))
@@ -547,13 +538,15 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     int _dialogCurrentProgress = item.currentProgress ?? 0;
     TextEditingController _noteController = TextEditingController(text: item.note);
 
+    // Fetch total episodes if it's a TV show and not already available
     if (!item.isMovie && (item.totalEpisodes == null || item.totalEpisodes == 0)) {
       int? fetchedTotalEpisodes = await _tmdbService.getTvShowTotalEpisodes(item.id);
       if (fetchedTotalEpisodes != null) {
-        item.totalEpisodes = fetchedTotalEpisodes;
+        item.totalEpisodes = fetchedTotalEpisodes; // Update the item's totalEpisodes
       }
     }
     final int actualTotalEpisodes = item.isMovie ? 1 : (item.totalEpisodes ?? 1);
+
 
     showModalBottomSheet(
       context: context,
@@ -935,6 +928,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
             return TabBarView(
               controller: _tabController,
               children: _libraryStatuses.map((status) {
+                // Pass the already filtered and sorted list to _buildLibraryTab
                 return _buildLibraryTab(_getSortedItems(libraryProvider.getItemsByStatus(status)));
               }).toList(),
             );
